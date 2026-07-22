@@ -98,6 +98,13 @@ nonisolated final class FrozenAreaCaptureSession {
     snapshots[displayID] != nil
   }
 
+  /// Value copy of the current snapshots, safe to hand to a detached task for
+  /// off-main cropping (dictionaries are value types; later mutations of the
+  /// session copy-on-write and never affect the returned value).
+  func allSnapshots() -> [CGDirectDisplayID: FrozenDisplaySnapshot] {
+    snapshots
+  }
+
   func addSnapshot(_ snapshot: FrozenDisplaySnapshot) {
     snapshots[snapshot.displayID] = snapshot
   }
@@ -116,6 +123,20 @@ nonisolated final class FrozenAreaCaptureSession {
   }
 
   func cropImage(
+    for selection: AreaSelectionResult,
+    minimumOutputScaleFactor: CGFloat = 1
+  ) throws -> FrozenAreaCropResult {
+    try Self.cropImage(
+      snapshots: snapshots,
+      for: selection,
+      minimumOutputScaleFactor: minimumOutputScaleFactor
+    )
+  }
+
+  /// Heavy crop/scale-promote/sharpen pipeline, decoupled from session state so
+  /// callers can run it off the main actor with a snapshots value copy.
+  static func cropImage(
+    snapshots: [CGDirectDisplayID: FrozenDisplaySnapshot],
     for selection: AreaSelectionResult,
     minimumOutputScaleFactor: CGFloat = 1
   ) throws -> FrozenAreaCropResult {
@@ -192,6 +213,20 @@ nonisolated final class FrozenAreaCaptureSession {
   }
 
   func cropCompositeImage(
+    for selection: AreaSelectionResult,
+    minimumOutputScaleFactor: CGFloat = 1
+  ) throws -> FrozenAreaCropResult {
+    try Self.cropCompositeImage(
+      snapshots: snapshots,
+      for: selection,
+      minimumOutputScaleFactor: minimumOutputScaleFactor
+    )
+  }
+
+  /// Heavy multi-display composite pipeline, decoupled from session state so
+  /// callers can run it off the main actor with a snapshots value copy.
+  static func cropCompositeImage(
+    snapshots: [CGDirectDisplayID: FrozenDisplaySnapshot],
     for selection: AreaSelectionResult,
     minimumOutputScaleFactor: CGFloat = 1
   ) throws -> FrozenAreaCropResult {

@@ -24,6 +24,10 @@ final class SingleFrameStreamCaptureSession: NSObject, @unchecked Sendable {
   /// frame in well under a second.
   nonisolated static let defaultTimeout: TimeInterval = 5
 
+  /// Shared CIContext: immutable and documented thread-safe for concurrent rendering;
+  /// avoids per-frame allocation on delivered frames.
+  private static let sharedCIContext = CIContext()
+
   private let lock = NSLock()
   private nonisolated(unsafe) var continuation: CheckedContinuation<CGImage, Error>?
   private nonisolated(unsafe) var stream: SCStream?
@@ -169,14 +173,13 @@ extension SingleFrameStreamCaptureSession: SCStreamOutput {
 
     // Convert CVPixelBuffer to CGImage
     let ciImage = CIImage(cvPixelBuffer: imageBuffer)
-    let context = CIContext()
     let rect = CGRect(
       x: 0, y: 0,
       width: CVPixelBufferGetWidth(imageBuffer),
       height: CVPixelBufferGetHeight(imageBuffer)
     )
 
-    guard let cgImage = context.createCGImage(ciImage, from: rect) else {
+    guard let cgImage = Self.sharedCIContext.createCGImage(ciImage, from: rect) else {
       finish(.failure(CaptureError.captureFailed(L10n.ScreenCapture.failedToCreateImageFromFrame)))
       return
     }
