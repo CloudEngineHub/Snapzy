@@ -600,6 +600,36 @@ final class ScreenCaptureViewModel: ObservableObject, KeyboardShortcutDelegate {
     // Give WindowServer enough time to fully remove hidden app windows before
     // the frozen backdrop is prepared.
     let snapshotDelay = hiddenWindowSession.didHideWindows ? frozenSnapshotWindowHideSettleDelay : 0
+
+    // Resolve NSScreen data on main thread (AppKit requirement), then pass as
+    // value types across the thread boundary for off-main CGDisplayCreateImage.
+    // Eligibility mirrors captureFastDisplaySnapshot guards for these call-site args;
+    // the own-application guard always passes because own windows were hidden above.
+    // Both call sites are on the main thread, so NSScreen access stays safe.
+    let makeFastSnapshotTask: () -> Task<FrozenDisplaySnapshot?, Never>? = {
+      guard !showCursor && !excludeDesktopIcons && !excludeDesktopWidgets,
+            let screen = NSScreen.screens.first(where: { $0.displayID == targetDisplayID })
+      else { return nil }
+      let screenFrame = screen.frame
+      let backingScaleFactor = screen.backingScaleFactor
+      let colorSpaceName = self.captureManager.preferredCaptureColorSpaceName(for: screen)
+      let captureManager = self.captureManager
+      // Task.detached ensures CGDisplayCreateImage runs on the cooperative thread
+      // pool, freeing the main thread.
+      return Task.detached {
+        captureManager.captureFastDisplaySnapshotOffMain(
+          displayID: targetDisplayID,
+          screenFrame: screenFrame,
+          backingScaleFactor: backingScaleFactor,
+          colorSpaceName: colorSpaceName
+        )
+      }
+    }
+    // Only pre-start the task when no windows were hidden: when they were, the
+    // off-main snapshot must wait out the settle delay or it can pick up
+    // Snapzy's own just-hidden windows.
+    let fastSnapshotTask = hiddenWindowSession.didHideWindows ? nil : makeFastSnapshotTask()
+
     DispatchQueue.main.asyncAfter(deadline: .now() + snapshotDelay) { [weak self] in
       guard let self else {
         DiagnosticLogger.shared.log(.warning, .capture, "captureArea: self deallocated")
@@ -614,16 +644,11 @@ final class ScreenCaptureViewModel: ObservableObject, KeyboardShortcutDelegate {
           self.isCapturing = true
           let snapshotStartedAt = Date()
           let captureMode: String
-          if let fastSnapshot = self.captureManager.captureFastDisplaySnapshot(
-            displayID: targetDisplayID,
-            showCursor: showCursor,
-            excludeDesktopIcons: excludeDesktopIcons,
-            excludeDesktopWidgets: excludeDesktopWidgets,
-            excludeOwnApplication: excludeOwnApplication,
-            allowFastPathWhenOwnApplicationHidden: excludeOwnApplication
-          ) {
+          if let fastSnapshotTask = fastSnapshotTask ?? makeFastSnapshotTask(),
+             let fastSnapshot = await fastSnapshotTask.value
+          {
             frozenSession = FrozenAreaCaptureSession.fromSnapshot(fastSnapshot)
-            captureMode = "coregraphics"
+            captureMode = "coregraphics-offmain"
           } else {
             let shareableContentTask = prefetchedContentTask ?? self.captureManager.prefetchShareableContent(
               includeDesktopWindows: excludeDesktopIcons || excludeDesktopWidgets
@@ -836,16 +861,36 @@ final class ScreenCaptureViewModel: ObservableObject, KeyboardShortcutDelegate {
       && !excludeDesktopIcons
       && !excludeDesktopWidgets
     if canUseFastPath {
-      let snapshots = NSScreen.screens.compactMap { screen -> FrozenDisplaySnapshot? in
-        guard let displayID = screen.displayID else { return nil }
-        return captureManager.captureFastDisplaySnapshot(
-          displayID: displayID,
-          showCursor: false,
-          excludeDesktopIcons: false,
-          excludeDesktopWidgets: false,
-          excludeOwnApplication: excludeOwnApplication,
-          allowFastPathWhenOwnApplicationHidden: excludeOwnApplication
-        )
+      // Resolve NSScreen data on main thread (AppKit requirement), then run
+      // CGDisplayCreateImage concurrently off-main for all displays.
+      let captureManager = captureManager
+      let screens = NSScreen.screens
+      let screenInputs: [(displayID: CGDirectDisplayID, screenFrame: CGRect, backingScaleFactor: CGFloat, colorSpaceName: CFString?)] =
+        screens.compactMap { screen in
+          guard let displayID = screen.displayID else { return nil }
+          return (
+            displayID,
+            screen.frame,
+            screen.backingScaleFactor,
+            captureManager.preferredCaptureColorSpaceName(for: screen)
+          )
+        }
+      let snapshots = await withTaskGroup(of: FrozenDisplaySnapshot?.self) { group in
+        for input in screenInputs {
+          group.addTask {
+            captureManager.captureFastDisplaySnapshotOffMain(
+              displayID: input.displayID,
+              screenFrame: input.screenFrame,
+              backingScaleFactor: input.backingScaleFactor,
+              colorSpaceName: input.colorSpaceName
+            )
+          }
+        }
+        var results: [FrozenDisplaySnapshot] = []
+        for await snapshot in group {
+          if let snapshot { results.append(snapshot) }
+        }
+        return results
       }
       if !snapshots.isEmpty, snapshots.count == NSScreen.screens.count {
         return (FrozenAreaCaptureSession.fromSnapshots(snapshots), "coregraphics-all")
@@ -976,19 +1021,38 @@ final class ScreenCaptureViewModel: ObservableObject, KeyboardShortcutDelegate {
                   excludeOwnApplication: excludeOwnApplication
                 )
               }
-              let cropResult: FrozenAreaCropResult
+              let snapshotsByID = frozenSession.allSnapshots()
               let outputScaleFactor = self.preferredScreenshotOutputScaleFactor
+              let cropStartedAt = Date()
+              let cropResult: FrozenAreaCropResult
               if selection.spansMultipleDisplays {
-                cropResult = try frozenSession.cropCompositeImage(
-                  for: selection,
-                  minimumOutputScaleFactor: outputScaleFactor
-                )
+                cropResult = try await Task.detached {
+                  try FrozenAreaCaptureSession.cropCompositeImage(
+                    snapshots: snapshotsByID,
+                    for: selection,
+                    minimumOutputScaleFactor: outputScaleFactor
+                  )
+                }.value
               } else {
-                cropResult = try frozenSession.cropImage(
-                  for: selection,
-                  minimumOutputScaleFactor: outputScaleFactor
-                )
+                cropResult = try await Task.detached {
+                  try FrozenAreaCaptureSession.cropImage(
+                    snapshots: snapshotsByID,
+                    for: selection,
+                    minimumOutputScaleFactor: outputScaleFactor
+                  )
+                }.value
               }
+              DiagnosticLogger.shared.log(
+                .debug,
+                .capture,
+                "Frozen area crop completed",
+                context: [
+                  "duration_ms": "\(Int(Date().timeIntervalSince(cropStartedAt) * 1000))",
+                  "mode": selection.spansMultipleDisplays ? "composite" : "single",
+                  "width": "\(cropResult.image.width)",
+                  "height": "\(cropResult.image.height)",
+                ]
+              )
               let result = await self.captureManager.saveProcessedImage(
                 cropResult.image,
                 to: actualSaveDirectory,
@@ -1325,19 +1389,37 @@ final class ScreenCaptureViewModel: ObservableObject, KeyboardShortcutDelegate {
     let frozenSession = FrozenAreaCaptureSession.fromSnapshots(snapshots)
 
     do {
+      let snapshotsByID = frozenSession.allSnapshots()
       let outputScaleFactor = preferredScreenshotOutputScaleFactor
+      let cropStartedAt = Date()
       let cropResult: FrozenAreaCropResult
       if selection.spansMultipleDisplays {
-        cropResult = try frozenSession.cropCompositeImage(
-          for: selection,
-          minimumOutputScaleFactor: outputScaleFactor
-        )
+        cropResult = try await Task.detached {
+          try FrozenAreaCaptureSession.cropCompositeImage(
+            snapshots: snapshotsByID,
+            for: selection,
+            minimumOutputScaleFactor: outputScaleFactor
+          )
+        }.value
       } else {
-        cropResult = try frozenSession.cropImage(
-          for: selection,
-          minimumOutputScaleFactor: outputScaleFactor
-        )
+        cropResult = try await Task.detached {
+          try FrozenAreaCaptureSession.cropImage(
+            snapshots: snapshotsByID,
+            for: selection,
+            minimumOutputScaleFactor: outputScaleFactor
+          )
+        }.value
       }
+      DiagnosticLogger.shared.log(
+        .debug, .capture,
+        "Frozen area crop completed",
+        context: [
+          "duration_ms": "\(Int(Date().timeIntervalSince(cropStartedAt) * 1000))",
+          "mode": selection.spansMultipleDisplays ? "composite" : "single",
+          "width": "\(cropResult.image.width)",
+          "height": "\(cropResult.image.height)"
+        ]
+      )
       let result = await captureManager.saveProcessedImage(
         cropResult.image,
         to: saveDirectory,

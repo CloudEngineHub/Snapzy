@@ -131,14 +131,12 @@ final class AreaSelectionMagnifier {
     return zoom != oldZoom
   }
 
+  private var pixelReadContext: CGContext?
+
   func update(
     at point: CGPoint,
     bounds: CGRect,
     backdropImage: CGImage?,
-    pixelData: [UInt8]?,
-    backdropWidth: Int,
-    backdropHeight: Int,
-    backdropScale: CGFloat,
     contentsScale: CGFloat,
     in rootLayer: CALayer
   ) {
@@ -195,23 +193,8 @@ final class AreaSelectionMagnifier {
     let pixelRect = CGRect(x: px, y: py, width: zoom, height: zoom)
     centerIndicator.path = CGPath(rect: pixelRect, transform: nil)
 
-    // Read pixel color under cursor from backdropPixelDataArray
-    var hexText = ""
-    if let pixelData = pixelData, backdropWidth > 0, backdropHeight > 0 {
-      let scaleX = bounds.width > 0 ? CGFloat(backdropWidth) / bounds.width : backdropScale
-      let scaleY = bounds.height > 0 ? CGFloat(backdropHeight) / bounds.height : backdropScale
-      let pixelX = point.x * scaleX
-      let pixelY = point.y * scaleY
-      let x = max(0, min(backdropWidth - 1, Int(pixelX)))
-      let y = max(0, min(backdropHeight - 1, backdropHeight - 1 - Int(pixelY)))
-      let pixelOffset = (y * backdropWidth + x) * 4
-      if pixelOffset + 2 < pixelData.count {
-        let r = pixelData[pixelOffset]
-        let g = pixelData[pixelOffset + 1]
-        let b = pixelData[pixelOffset + 2]
-        hexText = String(format: "#%02X%02X%02X", r, g, b)
-      }
-    }
+    // Read pixel color under cursor directly from the backdrop image (1×1 crop + draw, exact)
+    let hexText = hexColor(at: point, bounds: bounds, image: backdropImage) ?? ""
 
     let zoomString = String(format: "%.0fx", zoom)
     let infoString = hexText.isEmpty ? zoomString : "\(zoomString) • \(hexText)"
@@ -236,5 +219,49 @@ final class AreaSelectionMagnifier {
     infoText.isHidden = false
 
     CATransaction.commit()
+  }
+
+  /// Reads the exact pixel color under `point` by cropping a single pixel out of `image`
+  /// and drawing it into a reusable 1×1 context. Returns nil on any failure.
+  private func hexColor(at point: CGPoint, bounds: CGRect, image: CGImage) -> String? {
+    guard bounds.width > 0, bounds.height > 0, image.width > 0, image.height > 0 else {
+      return nil
+    }
+
+    let scaleX = CGFloat(image.width) / bounds.width
+    let scaleY = CGFloat(image.height) / bounds.height
+    let x = max(0, min(image.width - 1, Int(point.x * scaleX)))
+    // Invert y because Cocoa origin is bottom-left, while CGImage origin is top-left
+    let y = max(0, min(image.height - 1, image.height - 1 - Int(point.y * scaleY)))
+
+    let colorSpace = CGColorSpaceCreateDeviceRGB()
+    let context: CGContext
+    if let cached = pixelReadContext {
+      context = cached
+    } else {
+      guard let created = CGContext(
+        data: nil,
+        width: 1,
+        height: 1,
+        bitsPerComponent: 8,
+        bytesPerRow: 0,
+        space: colorSpace,
+        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue
+      ) else {
+        return nil
+      }
+      pixelReadContext = created
+      context = created
+    }
+
+    guard let pixel = image.cropping(to: CGRect(x: x, y: y, width: 1, height: 1)) else {
+      return nil
+    }
+    context.clear(CGRect(x: 0, y: 0, width: 1, height: 1))
+    context.draw(pixel, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+
+    guard let data = context.data else { return nil }
+    let bytes = data.assumingMemoryBound(to: UInt8.self)
+    return String(format: "#%02X%02X%02X", bytes[0], bytes[1], bytes[2])
   }
 }

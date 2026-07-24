@@ -328,6 +328,8 @@ final class AreaSelectionController: NSObject {
     } else {
       window.overlayView.clearBackdrop()
     }
+    window.selectionDelegate = self
+    window.orderFrontRegardless()
     window.overlayView.setAllowsApplicationWindowSelection(allowsApplicationWindowSelection)
     window.overlayView.setWindowSelectionSnapshot(windowSelectionSnapshot)
     window.overlayView.setInteractionMode(interactionMode, resetSelection: false)
@@ -341,8 +343,6 @@ final class AreaSelectionController: NSObject {
       livePassthroughCursorHider.hide(displayIDs: [displayID])
     }
     window.setReceivesKeyboardInput(displayID == keyboardOwnerDisplayID)
-    window.selectionDelegate = self
-    window.orderFrontRegardless()
     window.activateKeyboardInputIfNeeded()
     window.overlayView.refreshCursor()
   }
@@ -2501,12 +2501,29 @@ final class AreaSelectionOverlayView: NSView {
     delegate?.overlayView(self, manualSelectionChangedTo: currentMousePosition)
   }
 
+  /// Max long-edge of the cached backdrop bitmap. The cache only feeds the 5×5 average-luminance
+  /// sample grid, so a tiny image is plenty; this avoids a ~59 MB main-thread raster + copy on
+  /// 5K Retina displays.
+  private static let backdropPixelCacheMaxLongEdge: CGFloat = 512
+
   private func cacheBackdropPixels(from cgImage: CGImage, scale: CGFloat) {
-    let width = cgImage.width
-    let height = cgImage.height
-    backdropWidth = width
-    backdropHeight = height
-    backdropScale = scale
+    let startedAt = Date()
+    let sourceWidth = cgImage.width
+    let sourceHeight = cgImage.height
+    guard sourceWidth > 0, sourceHeight > 0 else {
+      self.backdropWidth = 0
+      self.backdropHeight = 0
+      self.backdropScale = scale
+      self.backdropPixelDataArray = nil
+      return
+    }
+
+    let downscale = min(1, Self.backdropPixelCacheMaxLongEdge / CGFloat(max(sourceWidth, sourceHeight)))
+    let width = max(1, Int((CGFloat(sourceWidth) * downscale).rounded()))
+    let height = max(1, Int((CGFloat(sourceHeight) * downscale).rounded()))
+    self.backdropWidth = width
+    self.backdropHeight = height
+    self.backdropScale = scale
 
     let colorSpace = CGColorSpaceCreateDeviceRGB()
     guard let context = CGContext(
@@ -2528,6 +2545,7 @@ final class AreaSelectionOverlayView: NSView {
       return
     }
 
+    context.interpolationQuality = .medium
     context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
 
     if let dataPtr = context.data {
@@ -2545,8 +2563,11 @@ final class AreaSelectionOverlayView: NSView {
       context: [
         "width": "\(width)",
         "height": "\(height)",
+        "sourceWidth": "\(sourceWidth)",
+        "sourceHeight": "\(sourceHeight)",
         "scale": "\(scale)",
-        "cachedBytes": "\(backdropPixelDataArray?.count ?? 0)",
+        "cachedBytes": "\(self.backdropPixelDataArray?.count ?? 0)",
+        "duration_ms": "\(Date().timeIntervalSince(startedAt) * 1000)"
       ]
     )
   }
@@ -2724,10 +2745,6 @@ final class AreaSelectionOverlayView: NSView {
       at: point,
       bounds: bounds,
       backdropImage: currentBackdropImage,
-      pixelData: backdropPixelDataArray,
-      backdropWidth: backdropWidth,
-      backdropHeight: backdropHeight,
-      backdropScale: backdropScale,
       contentsScale: screenScaleFactor,
       in: layer ?? CALayer()
     )
