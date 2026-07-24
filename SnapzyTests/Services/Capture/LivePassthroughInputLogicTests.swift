@@ -204,4 +204,53 @@ final class LivePassthroughInputLogicTests: XCTestCase {
 
     XCTAssertTrue(recorder.shown.isEmpty)
   }
+
+  // MARK: - Cursor Restore (teardown warp)
+
+  private enum RestoreEffect: Equatable {
+    case setSuppressionInterval(CFTimeInterval)
+    case warp(CGPoint)
+    case reassociate
+  }
+
+  /// Teardown warps the cursor to the last tap-observed location. macOS suppresses
+  /// hardware mouse events for 0.25s after a warp by default — the cursor froze and
+  /// then jumped as the backlog landed. The restorer must zero the suppression
+  /// interval BEFORE the warp lands, then re-associate.
+  func testCursorRestore_zeroesSuppressionIntervalBeforeWarp_thenReassociates() {
+    var effects: [RestoreEffect] = []
+    let restorer = LivePassthroughCursorRestorer(
+      setSuppressionInterval: { effects.append(.setSuppressionInterval($0)) },
+      warp: { effects.append(.warp($0)) },
+      reassociate: { effects.append(.reassociate) }
+    )
+    let target = CGPoint(x: 200, y: 200)
+
+    restorer.restore(to: target)
+
+    XCTAssertEqual(
+      effects,
+      [
+        .setSuppressionInterval(0),
+        .warp(target),
+        .reassociate,
+      ],
+      "suppression must be zeroed before the warp, with re-association last"
+    )
+  }
+
+  /// A zero suppression interval is the whole point of the restore — any other value
+  /// keeps the post-warp freeze alive.
+  func testCursorRestore_suppressionInterval_isZero() {
+    var intervals: [CFTimeInterval] = []
+    let restorer = LivePassthroughCursorRestorer(
+      setSuppressionInterval: { intervals.append($0) },
+      warp: { _ in },
+      reassociate: {}
+    )
+
+    restorer.restore(to: .zero)
+
+    XCTAssertEqual(intervals, [0])
+  }
 }

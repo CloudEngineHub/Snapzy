@@ -54,7 +54,6 @@ enum RecaptureReason {
 /// Uses window pooling for instant activation (<150ms vs 400-600ms)
 @MainActor
 final class AreaSelectionController: NSObject {
-
   /// Shared instance for app-wide access
   static let shared = AreaSelectionController()
 
@@ -140,16 +139,30 @@ final class AreaSelectionController: NSObject {
   private let livePassthroughEventTap = CaptureEventTapController()
   private var isLivePassthroughInputActive = false
   private var hasRevealedLivePassthroughDim = false
-  /// Per-display cursor hide/show balance (`LivePassthroughCursorHider` documents the
-  /// foreground-app limitation — from this background agent the hide does not reliably
-  /// apply; kept as the accepted baseline).
+  /// Grants this background process permission to hide the system cursor (see
+  /// `BackgroundCursorControl`); without it `CGDisplayHideCursor` is a no-op off the
+  /// foreground app. Enabled once per session, just before the first hide below.
+  private let backgroundCursorControl = BackgroundCursorControl()
+  /// Per-display cursor hide/show balance. With `backgroundCursorControl` enabled the
+  /// hides actually take effect from this background agent, so only the drawn crosshair
+  /// proxy remains (the arrow may momentarily reappear over the Dock — see
+  /// `BackgroundCursorControl`).
   private var livePassthroughCursorHider = LivePassthroughCursorHider()
+  /// Restores the real cursor position on teardown without the 0.25s post-warp
+  /// hardware-event suppression (see `LivePassthroughCursorRestorer`).
+  private let livePassthroughCursorRestorer = LivePassthroughCursorRestorer()
   /// Hover coalescing state: latest observed point, one scheduled UI update per run-loop
   /// pass, and the last point/display that actually triggered a hit-test.
   private var pendingLivePassthroughHoverPoint: CGPoint?
   private var isLivePassthroughHoverUpdateScheduled = false
   private var lastProcessedLivePassthroughHoverPoint: CGPoint?
   private var lastProcessedLivePassthroughDisplayID: CGDirectDisplayID?
+  /// Last raw pointer location (global Quartz, top-left origin) the capture event tap
+  /// reported this session. On teardown the cursor is warped here before it is revealed:
+  /// while the consuming tap runs, the WindowServer's tracked cursor position goes stale, so
+  /// `CGDisplayShowCursor` alone would reveal the arrow at the pre-session spot (a visible
+  /// "jump"). Nil until the first observed event; cleared on teardown.
+  private var lastLivePassthroughPointerLocation: CGPoint?
 
   /// Whether the overlay should be dismissed immediately after a selection is made.
   /// When `false`, the caller is responsible for calling `cancelSelection()` to dismiss.
@@ -164,7 +177,7 @@ final class AreaSelectionController: NSObject {
 
   // MARK: - Initialization
 
-  private override init() {
+  override private init() {
     super.init()
   }
 
@@ -201,7 +214,7 @@ final class AreaSelectionController: NSObject {
 
   /// Refresh window pool when screens change
   private func refreshWindowPool() {
-    let currentDisplayIDs = Set(NSScreen.screens.compactMap { $0.displayID })
+    let currentDisplayIDs = Set(NSScreen.screens.compactMap(\.displayID))
     let pooledDisplayIDs = Set(windowPool.keys)
 
     // Remove windows for disconnected displays
@@ -303,6 +316,13 @@ final class AreaSelectionController: NSObject {
       )
     }
     window.updateSelectionMode(selectionMode)
+    // Set the passthrough flag BEFORE any overlay configuration that funnels into
+    // `applyActiveCursor()` (`setInteractionMode`, `setSelectionEnabled`, `resetSelection`,
+    // and the final `refreshCursor()`). With the flag in place those calls skip
+    // `NSCursor.set()` for passthrough sessions; without it the crosshair would be set
+    // on the real cursor at session start and could leak past teardown (e.g. onto the
+    // Quick Access card) now that background cursor changes stick.
+    window.setLivePassthroughInputEnabled(isLivePassthroughInputActive)
     if let backdrop = selectionBackdrops[displayID] {
       window.overlayView.applyBackdrop(backdrop)
     } else {
@@ -313,7 +333,6 @@ final class AreaSelectionController: NSObject {
     window.overlayView.setInteractionMode(interactionMode, resetSelection: false)
     window.overlayView.setSelectionEnabled(selectionEnabled(for: displayID))
     window.overlayView.resetSelection()
-    window.setLivePassthroughInputEnabled(isLivePassthroughInputActive)
     // A window attached mid-session (display hot-plug) must match the current dim
     // state, not the hidden initial state — and its display joins the cursor
     // hide/show balance (the hider guards against double-hiding covered displays).
@@ -332,9 +351,14 @@ final class AreaSelectionController: NSObject {
   private func resetPooledWindows() {
     for (_, window) in windowPool {
       window.setReceivesKeyboardInput(false)
-      window.setLivePassthroughInputEnabled(false)
+      // Clear the passthrough flag only AFTER `resetSelection()`: its `refreshCursor()`
+      // funnels into `applyActiveCursor()`, which must still see the passthrough guard
+      // so it skips `NSCursor.set()`. Clearing the flag first would set the crosshair on
+      // the real cursor mid-teardown and leak it past the session (e.g. onto the Quick
+      // Access card).
       window.overlayView.resetSelection()
       window.overlayView.clearBackdrop()
+      window.setLivePassthroughInputEnabled(false)
     }
     activeWindow = nil
   }
@@ -560,7 +584,7 @@ final class AreaSelectionController: NSObject {
             )
           }.value
 
-          guard let self, self.selectionSessionID == sessionID else { return }
+          guard let self, selectionSessionID == sessionID else { return }
           guard let backdrop else {
             DiagnosticLogger.shared.log(
               .warning,
@@ -569,7 +593,7 @@ final class AreaSelectionController: NSObject {
             )
             return
           }
-          self.applyBackdrop(backdrop, for: targetDisplayID)
+          applyBackdrop(backdrop, for: targetDisplayID)
         }
       }
     }
@@ -657,7 +681,7 @@ final class AreaSelectionController: NSObject {
   }
 
   private func handleSessionKeyEvent(_ event: NSEvent) -> Bool {
-    if event.keyCode == 53 {  // Escape key
+    if event.keyCode == 53 { // Escape key
       cancelSelection()
       return true
     }
@@ -679,7 +703,7 @@ final class AreaSelectionController: NSObject {
 
   private func toggleInteractionMode() {
     guard manualSelectionStartPoint == nil,
-          !windowPool.values.contains(where: { $0.overlayView.isManualSelectionInProgress }) else {
+          !windowPool.values.contains(where: \.overlayView.isManualSelectionInProgress) else {
       return
     }
     let nextMode: AreaSelectionInteractionMode = interactionMode == .manualRegion
@@ -821,7 +845,6 @@ final class AreaSelectionController: NSObject {
     return result
   }
 
-
   private func requestDisplayActivationIfNeeded(for window: AreaSelectionWindow) {
     guard interactionMode == .manualRegion else { return }
     guard selectionMode == .screenshot else { return }
@@ -848,7 +871,7 @@ final class AreaSelectionController: NSObject {
       context: [
         "isPresenting": "\(isPresenting)",
         "isActive": "\(NSApp.isActive)",
-        "keyboardOwnerDisplayID": keyboardOwnerDisplayID.map { "\($0)" } ?? "nil"
+        "keyboardOwnerDisplayID": keyboardOwnerDisplayID.map { "\($0)" } ?? "nil",
       ]
     )
 
@@ -874,9 +897,9 @@ final class AreaSelectionController: NSObject {
     guard isPresenting else { return }
 
     // For frozen sessions, we never recapture on simple app activations/switches
-    // (including the initial activation of Snapzy itself) to avoid double-captures 
+    // (including the initial activation of Snapzy itself) to avoid double-captures
     // and losing the focused window's state. We only recapture if the Space changes.
-    if transitionRecaptureHandler != nil && reason == .appActivation {
+    if transitionRecaptureHandler != nil, reason == .appActivation {
       return
     }
 
@@ -914,7 +937,7 @@ final class AreaSelectionController: NSObject {
         "Recapturing backdrops for live-mode luma calculations after transition settle",
         context: [
           "isPresenting": "\(isPresenting)",
-          "isActive": "\(NSApp.isActive)"
+          "isActive": "\(NSApp.isActive)",
         ]
       )
 
@@ -939,9 +962,9 @@ final class AreaSelectionController: NSObject {
             )
           }.value
 
-          guard let self, self.selectionSessionID == sessionID else { return }
+          guard let self, selectionSessionID == sessionID else { return }
           if let backdrop {
-            self.applyBackdrop(backdrop, for: displayID, animated: true)
+            applyBackdrop(backdrop, for: displayID, animated: true)
           }
         }
       }
@@ -975,9 +998,9 @@ final class AreaSelectionController: NSObject {
     // call back into the controller (live area mode calls `cancelSelection()` to dismiss after
     // its mouse-up snapshots) — without this, that re-entrant call would fire the same
     // completion a second time with nil.
-    let completion = self.completion
-    let completionWithMode = self.completionWithMode
-    let completionWithResult = self.completionWithResult
+    let completion = completion
+    let completionWithMode = completionWithMode
+    let completionWithResult = completionWithResult
     self.completion = nil
     self.completionWithMode = nil
     self.completionWithResult = nil
@@ -1004,7 +1027,7 @@ final class AreaSelectionController: NSObject {
 
   private func forceCursorReset() {
     NSCursor.arrow.set()
-    
+
     // Discard cursor rects for all pooled windows before deactivating them
     for (_, window) in windowPool {
       window.discardCursorRects()
@@ -1041,9 +1064,9 @@ final class AreaSelectionController: NSObject {
     cancelWindowSelectionTask()
     deactivatePooledWindows()
     // Snapshot and clear before invoking — see `completeSelection` (re-entrancy safety).
-    let completion = self.completion
-    let completionWithMode = self.completionWithMode
-    let completionWithResult = self.completionWithResult
+    let completion = completion
+    let completionWithMode = completionWithMode
+    let completionWithResult = completionWithResult
     self.completion = nil
     self.completionWithMode = nil
     self.completionWithResult = nil
@@ -1129,16 +1152,16 @@ final class AreaSelectionController: NSObject {
     window.setReceivesKeyboardInput(true)
     window.makeKeyAndOrderFront(nil)
     window.makeFirstResponder(window.overlayView)
-    
+
     // macOS WindowServer is notoriously stubborn about applying cursor rects for newly-key
     // windows of inactive applications if the mouse was already inside the window.
     // By explicitly removing and re-adding the tracking area here, AppKit generates
     // immediate mouseEntered and cursorUpdate events for the new key window.
     window.overlayView.updateTrackingAreas()
-    
+
     // Invalidate cursor rects before the next event
     window.overlayView.refreshCursor()
-    
+
     DiagnosticLogger.shared.log(
       .debug,
       .capture,
@@ -1193,16 +1216,20 @@ final class AreaSelectionController: NSObject {
     guard livePassthroughEventTap.start() else { return }
     isLivePassthroughInputActive = true
     hasRevealedLivePassthroughDim = false
-    // Attempt to hide the system cursor for the session — the overlay draws the cursor
-    // image itself (see `updateCursorProxy`). Known limitation: `CGDisplayHideCursor`
-    // only applies to the foreground application, and this agent must never activate
-    // mid-capture, so the arrow typically remains visible next to the proxy (accepted
-    // baseline per user decision). The per-display balance is still honored on
-    // teardown so the cursor can never be left hidden where a hide did take effect.
-    // `NSCursor.hide()` cannot substitute: it only applies while the pointer is over
-    // our own windows, and with hit-transparent panels that is never the case.
-    // Balanced by `stopLivePassthroughInput`.
-    livePassthroughCursorHider.hide(displayIDs: Set(NSScreen.screens.compactMap { $0.displayID }))
+    lastLivePassthroughPointerLocation = nil
+    // Hide the system cursor for the session so only the drawn crosshair proxy shows
+    // (see `updateCursorProxy`). `CGDisplayHideCursor` only applies to the foreground
+    // app, and this agent must never activate mid-capture — so first grant this
+    // background process cursor control via `SetsCursorInBackground` (idempotent, once
+    // per run); the hides below then take effect. If that grant is unavailable the hide
+    // silently no-ops and we fall back to the old arrow-visible baseline. `NSCursor.hide()`
+    // cannot substitute: it carries the same foreground requirement and only applies over
+    // our own windows, which hit-transparent panels never are. The per-display balance is
+    // honored on teardown (`stopLivePassthroughInput`) so the cursor can never be left
+    // hidden where a hide took effect. (The arrow may momentarily reappear over the Dock —
+    // see `BackgroundCursorControl`.)
+    backgroundCursorControl.enableOnce()
+    livePassthroughCursorHider.hide(displayIDs: Set(NSScreen.screens.compactMap(\.displayID)))
     DiagnosticLogger.shared.log(.info, .capture, "Live passthrough input active")
   }
 
@@ -1212,11 +1239,22 @@ final class AreaSelectionController: NSObject {
   private func stopLivePassthroughInput() {
     guard isLivePassthroughInputActive else { return }
     livePassthroughEventTap.stop()
+    // Before revealing the real cursor, put it where the pointer actually is. While the
+    // consuming tap ran, the WindowServer's tracked cursor position went stale, so
+    // `CGDisplayShowCursor` alone reveals the arrow at the pre-session spot — a visible
+    // "jump". `restore(to:)` warps to the last location the tap observed with the
+    // post-warp hardware-event suppression window neutralized, so the cursor neither
+    // freezes nor jumps as the user keeps moving. Skipped when the pointer never moved
+    // this session (nothing to correct).
+    if let location = lastLivePassthroughPointerLocation {
+      livePassthroughCursorRestorer.restore(to: location)
+    }
     isLivePassthroughInputActive = false
     hasRevealedLivePassthroughDim = false
     pendingLivePassthroughHoverPoint = nil
     lastProcessedLivePassthroughHoverPoint = nil
     lastProcessedLivePassthroughDisplayID = nil
+    lastLivePassthroughPointerLocation = nil
     livePassthroughCursorHider.showAll()
   }
 
@@ -1729,7 +1767,7 @@ extension AreaSelectionController: AreaSelectionWindowDelegate {
     completeSelection(windowTarget: target, from: window)
   }
 
-  func areaSelectionWindowDidCancel(_ window: AreaSelectionWindow) {
+  func areaSelectionWindowDidCancel(_: AreaSelectionWindow) {
     cancelSelection()
   }
 
@@ -1773,11 +1811,11 @@ extension AreaSelectionController: AreaSelectionWindowDelegate {
     beginManualSelection(at: screenPoint, from: window)
   }
 
-  func areaSelectionWindow(_ window: AreaSelectionWindow, manualSelectionChangedTo screenPoint: CGPoint) {
+  func areaSelectionWindow(_: AreaSelectionWindow, manualSelectionChangedTo screenPoint: CGPoint) {
     updateManualSelection(to: screenPoint)
   }
 
-  func areaSelectionWindow(_ window: AreaSelectionWindow, manualSelectionEndedAt screenPoint: CGPoint) {
+  func areaSelectionWindow(_: AreaSelectionWindow, manualSelectionEndedAt screenPoint: CGPoint) {
     endManualSelection(at: screenPoint)
   }
 }
@@ -1791,12 +1829,14 @@ extension AreaSelectionController: CaptureEventTapDelegate {
   /// AppKit coordinates once, here at the boundary.
   nonisolated func eventTapDidObserveMouseMoved(at screenPoint: CGPoint) {
     MainActor.assumeIsolated {
+      lastLivePassthroughPointerLocation = screenPoint
       handleLivePassthroughHover(at: appKitScreenPoint(fromQuartzGlobalPoint: screenPoint))
     }
   }
 
   nonisolated func eventTapDidReceiveButton(_ kind: CaptureButtonEvent, at screenPoint: CGPoint) {
     MainActor.assumeIsolated {
+      lastLivePassthroughPointerLocation = screenPoint
       handleLivePassthroughButton(kind, at: appKitScreenPoint(fromQuartzGlobalPoint: screenPoint))
     }
   }
@@ -1832,7 +1872,6 @@ protocol AreaSelectionWindowDelegate: AnyObject {
 /// Uses NSPanel with .nonactivatingPanel to prevent background windows from deactivating/blurring
 /// Supports pooled mode for instant activation
 final class AreaSelectionWindow: NSPanel {
-
   weak var selectionDelegate: AreaSelectionWindowDelegate?
 
   let overlayView: AreaSelectionOverlayView
@@ -1844,8 +1883,8 @@ final class AreaSelectionWindow: NSPanel {
   ///   - screen: The screen this window covers
   ///   - pooled: If true, window starts hidden for pool pre-allocation
   init(screen: NSScreen, pooled: Bool = false) {
-    self.targetScreen = screen
-    self.overlayView = AreaSelectionOverlayView(frame: CGRect(origin: .zero, size: screen.frame.size))
+    targetScreen = screen
+    overlayView = AreaSelectionOverlayView(frame: CGRect(origin: .zero, size: screen.frame.size))
 
     super.init(
       contentRect: screen.frame,
@@ -1855,50 +1894,51 @@ final class AreaSelectionWindow: NSPanel {
     )
 
     // Configure as non-activating panel to prevent background windows from blurring
-    self.isFloatingPanel = true
-    self.isOpaque = false
-    self.backgroundColor = NSColor(white: 0, alpha: 0.005)
-    self.sharingType = .none
-    self.level = .screenSaver
-    self.ignoresMouseEvents = false
-    self.acceptsMouseMovedEvents = true
-    self.isReleasedWhenClosed = false
-    self.hasShadow = false
-    self.hidesOnDeactivate = false
-    self.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
-    self.animationBehavior = .none  // Disable window animations for instant appearance
-    self.becomesKeyOnlyIfNeeded = true
-    
+    isFloatingPanel = true
+    isOpaque = false
+    backgroundColor = NSColor(white: 0, alpha: 0.005)
+    sharingType = .none
+    level = .screenSaver
+    ignoresMouseEvents = false
+    acceptsMouseMovedEvents = true
+    isReleasedWhenClosed = false
+    hasShadow = false
+    hidesOnDeactivate = false
+    collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
+    animationBehavior = .none // Disable window animations for instant appearance
+    becomesKeyOnlyIfNeeded = true
+
     // Lock window movement and resizing
-    self.isMovable = false
-    self.isMovableByWindowBackground = false
-    self.minSize = screen.frame.size
-    self.maxSize = screen.frame.size
+    isMovable = false
+    isMovableByWindowBackground = false
+    minSize = screen.frame.size
+    maxSize = screen.frame.size
 
     // Set up content view
-    self.contentView = overlayView
+    contentView = overlayView
     overlayView.delegate = self
     overlayView.keyEventHandler = { [weak self] event in
       guard let self else { return false }
-      return self.selectionDelegate?.areaSelectionWindow(self, didReceiveKeyEvent: event) ?? false
+      return selectionDelegate?.areaSelectionWindow(self, didReceiveKeyEvent: event) ?? false
     }
 
     // Hide the panel from Accessibility so VoiceOver / assistive tech ignore
     // the overlay chrome (kept as hygiene for any future AX-aware capture work).
-    self.setAccessibilityElement(false)
-    self.setAccessibilityHidden(true)
-    self.setAccessibilityRole(.unknown)
+    setAccessibilityElement(false)
+    setAccessibilityHidden(true)
+    setAccessibilityRole(.unknown)
 
     if pooled {
       // Pooled windows start hidden
-      self.orderOut(nil)
+      orderOut(nil)
     } else {
       // Non-pooled windows show immediately without stealing focus
-      self.orderFrontRegardless()
+      orderFrontRegardless()
     }
   }
 
-  required init?(coder: NSCoder) {
+  @available(*, unavailable)
+  required init?(coder _: NSCoder) {
     fatalError("init(coder:) has not been implemented")
   }
 
@@ -1914,9 +1954,9 @@ final class AreaSelectionWindow: NSPanel {
   /// comes from the event tap consuming every mouse event before delivery; if the tap
   /// is ever disabled by the system, events hit this panel whose handlers are inert in
   /// passthrough mode — the apps beneath never see them either way. The system cursor
-  /// is handled by the drawn proxy layer plus a `CGDisplayHideCursor` attempt (see
-  /// `LivePassthroughCursorHider` for its foreground-app limitation), never by cursor
-  /// rects — cursor rects would require this panel to be hittable.
+  /// is hidden (`CGDisplayHideCursor`, unlocked from this background agent by
+  /// `BackgroundCursorControl`) and the crosshair is rendered by the drawn proxy layer,
+  /// never by cursor rects — cursor rects would require this panel to be hittable.
   func setLivePassthroughInputEnabled(_ enabled: Bool) {
     ignoresMouseEvents = enabled
     acceptsMouseMovedEvents = !enabled
@@ -1925,8 +1965,8 @@ final class AreaSelectionWindow: NSPanel {
   }
 
   override func setFrame(_ frameRect: NSRect, display displayFlag: Bool) {
-    self.minSize = frameRect.size
-    self.maxSize = frameRect.size
+    minSize = frameRect.size
+    maxSize = frameRect.size
     super.setFrame(frameRect, display: displayFlag)
   }
 
@@ -1945,51 +1985,56 @@ final class AreaSelectionWindow: NSPanel {
   }
 
   // Non-activating: prevent stealing focus from other apps
-  override var canBecomeKey: Bool { receivesKeyboardInput }
-  override var canBecomeMain: Bool { false }
+  override var canBecomeKey: Bool {
+    receivesKeyboardInput
+  }
+
+  override var canBecomeMain: Bool {
+    false
+  }
 }
 
 // MARK: - AreaSelectionOverlayViewDelegate
 
 extension AreaSelectionWindow: AreaSelectionOverlayViewDelegate {
-  func overlayView(_ view: AreaSelectionOverlayView, didSelectRect rect: CGRect) {
+  func overlayView(_: AreaSelectionOverlayView, didSelectRect rect: CGRect) {
     // Convert from view coordinates to screen coordinates
     let screenRect = convertToScreenCoordinates(rect)
     selectionDelegate?.areaSelectionWindow(self, didSelectRect: screenRect)
   }
 
-  func overlayView(_ view: AreaSelectionOverlayView, didSelectWindow target: WindowCaptureTarget) {
+  func overlayView(_: AreaSelectionOverlayView, didSelectWindow target: WindowCaptureTarget) {
     selectionDelegate?.areaSelectionWindow(self, didSelectWindow: target)
   }
 
-  func overlayViewDidCancel(_ view: AreaSelectionOverlayView) {
+  func overlayViewDidCancel(_: AreaSelectionOverlayView) {
     selectionDelegate?.areaSelectionWindowDidCancel(self)
   }
 
-  func overlayViewDidRequestDisplayActivation(_ view: AreaSelectionOverlayView) {
+  func overlayViewDidRequestDisplayActivation(_: AreaSelectionOverlayView) {
     selectionDelegate?.areaSelectionWindowDidRequestDisplayActivation(self)
   }
 
-  func overlayViewDidRequestImmediateManualSelection(_ view: AreaSelectionOverlayView) {
+  func overlayViewDidRequestImmediateManualSelection(_: AreaSelectionOverlayView) {
     selectionDelegate?.areaSelectionWindowDidRequestImmediateManualSelection(self)
   }
 
-  func overlayView(_ view: AreaSelectionOverlayView, manualSelectionBeganAt point: CGPoint) {
+  func overlayView(_: AreaSelectionOverlayView, manualSelectionBeganAt point: CGPoint) {
     selectionDelegate?.areaSelectionWindow(self, manualSelectionBeganAt: convertToScreenPoint(point))
   }
 
-  func overlayView(_ view: AreaSelectionOverlayView, manualSelectionChangedTo point: CGPoint) {
+  func overlayView(_: AreaSelectionOverlayView, manualSelectionChangedTo point: CGPoint) {
     selectionDelegate?.areaSelectionWindow(self, manualSelectionChangedTo: convertToScreenPoint(point))
   }
 
-  func overlayView(_ view: AreaSelectionOverlayView, manualSelectionEndedAt point: CGPoint) {
+  func overlayView(_: AreaSelectionOverlayView, manualSelectionEndedAt point: CGPoint) {
     selectionDelegate?.areaSelectionWindow(self, manualSelectionEndedAt: convertToScreenPoint(point))
   }
 
   private func convertToScreenCoordinates(_ rect: CGRect) -> CGRect {
     // The rect is in window coordinates (bottom-left origin)
     // Convert to global screen coordinates (also bottom-left origin)
-    let windowFrame = self.frame
+    let windowFrame = frame
 
     return CGRect(
       x: windowFrame.origin.x + rect.origin.x,
@@ -2028,7 +2073,6 @@ protocol AreaSelectionOverlayViewDelegate: AnyObject {
 /// The view that handles drawing and mouse interaction
 /// Uses CALayer-based rendering for 60fps crosshair movement (Phase 2 optimization)
 final class AreaSelectionOverlayView: NSView {
-
   weak var delegate: AreaSelectionOverlayViewDelegate?
   var keyEventHandler: ((NSEvent) -> Bool)?
   var selectionMode: SelectionMode = .screenshot {
@@ -2036,6 +2080,7 @@ final class AreaSelectionOverlayView: NSView {
       needsDisplay = true
     }
   }
+
   private var interactionMode: AreaSelectionInteractionMode = .manualRegion
   private var allowsApplicationWindowSelection = false
 
@@ -2066,15 +2111,16 @@ final class AreaSelectionOverlayView: NSView {
   private var didLogMissingLumaData = false
 
   // MARK: - Magnifying Glass Zoom (Pixel-level zoom)
+
   private let magnifier = AreaSelectionMagnifier()
   private var currentBackdropImage: CGImage?
-
 
   private lazy var reusableDimMaskLayer: CAShapeLayer = {
     let layer = CAShapeLayer()
     layer.fillRule = .evenOdd
     return layer
   }()
+
   private var reusableCrosshairPath = CGMutablePath()
   private var horizontalCrosshairLayer: CAShapeLayer!
   private var verticalCrosshairLayer: CAShapeLayer!
@@ -2109,7 +2155,7 @@ final class AreaSelectionOverlayView: NSView {
 
   /// Disabled animations for instant layer updates
   private var disabledActions: [String: CAAction] {
-    return [
+    [
       "position": NSNull(),
       "bounds": NSNull(),
       "path": NSNull(),
@@ -2118,7 +2164,7 @@ final class AreaSelectionOverlayView: NSView {
       "backgroundColor": NSNull(),
       "frame": NSNull(),
       "contents": NSNull(),
-      "contentsScale": NSNull()
+      "contentsScale": NSNull(),
     ]
   }
 
@@ -2274,15 +2320,15 @@ final class AreaSelectionOverlayView: NSView {
 
   // MARK: - Cursor
 
-  override func cursorUpdate(with event: NSEvent) {
+  override func cursorUpdate(with _: NSEvent) {
     guard !isLivePassthroughInput else { return }
-    activeCursor.set()
+    applyActiveCursor()
   }
 
   override func mouseEntered(with event: NSEvent) {
     guard !isLivePassthroughInput else { return }
     delegate?.overlayViewDidRequestDisplayActivation(self)
-    activeCursor.set()
+    applyActiveCursor()
     let point = convert(event.locationInWindow, from: nil)
     currentMousePosition = point
     updateCoordinateIndicator(at: point)
@@ -2292,7 +2338,7 @@ final class AreaSelectionOverlayView: NSView {
     }
   }
 
-  override func mouseExited(with event: NSEvent) {
+  override func mouseExited(with _: NSEvent) {
     guard !isLivePassthroughInput else { return }
     NSCursor.arrow.set()
     hideSizeIndicator()
@@ -2313,7 +2359,7 @@ final class AreaSelectionOverlayView: NSView {
 
   private func refreshActiveCursor() {
     window?.invalidateCursorRects(for: self)
-    activeCursor.set()
+    applyActiveCursor()
   }
 
   func refreshCursor() {
@@ -2328,7 +2374,31 @@ final class AreaSelectionOverlayView: NSView {
   /// The selection drag monitors call this on every drag update to keep the crosshair sticky.
   func reassertCursorDuringDrag() {
     guard isManualSelectionInProgress else { return }
-    activeCursor.set()
+    applyActiveCursor()
+  }
+
+  /// Effect seam for the real-cursor set in `applyActiveCursor()` — production applies
+  /// the cursor to the system, tests record it. Mirrors the injectable-effect pattern
+  /// of `LivePassthroughCursorHider` / `BackgroundCursorControl`.
+  var cursorSetEffect: (NSCursor) -> Void = { $0.set() }
+
+  /// Apply the mode's cursor image to the *real* system cursor — but never during live
+  /// passthrough. There the real cursor is hidden and the crosshair is drawn by
+  /// `cursorProxyLayer`, so setting the real cursor is pointless; and now that
+  /// `BackgroundCursorControl` makes background cursor changes stick, doing so would leak
+  /// the crosshair image onto the system cursor after the session ends (e.g. onto the Quick
+  /// Access card). The window-event fallback path still sets the cursor normally.
+  ///
+  /// Also never while the overlay is off screen: its `.activeAlways` + `.mouseMoved`
+  /// tracking area keeps delivering `mouseMoved`/`cursorUpdate` to this view after the
+  /// session ends and the window is ordered out (`isVisible == false`), and the passthrough
+  /// flag is already cleared by `resetPooledWindows()` at that point — so without this
+  /// guard every stray event re-applies the crosshair and leaks it onto whatever the
+  /// pointer hovers next (observed over the Quick Access card).
+  private func applyActiveCursor() {
+    guard !isLivePassthroughInput else { return }
+    guard window?.isVisible ?? true else { return }
+    cursorSetEffect(activeCursor)
   }
 
   // MARK: - Public Methods
@@ -2360,8 +2430,10 @@ final class AreaSelectionOverlayView: NSView {
     crosshairIndicatorLayer.isHidden = true
     cursorProxyLayer.isHidden = true
     updateCoordinateIndicator(at: currentMousePosition)
-    showSelectionAreaOverlay = UserDefaults.standard.object(forKey: PreferencesKeys.screenshotShowSelectionAreaOverlay) as? Bool ?? true
-    magnifier.reverseZoomDirection = UserDefaults.standard.object(forKey: PreferencesKeys.screenshotReverseMagnifierZoomDirection) as? Bool ?? false
+    showSelectionAreaOverlay = UserDefaults.standard
+      .object(forKey: PreferencesKeys.screenshotShowSelectionAreaOverlay) as? Bool ?? true
+    magnifier.reverseZoomDirection = UserDefaults.standard
+      .object(forKey: PreferencesKeys.screenshotReverseMagnifierZoomDirection) as? Bool ?? false
     dimLayer.backgroundColor = showSelectionAreaOverlay ? dimColor.cgColor : nil
     dimLayer.mask = nil
     dimLayer.frame = bounds
@@ -2432,9 +2504,9 @@ final class AreaSelectionOverlayView: NSView {
   private func cacheBackdropPixels(from cgImage: CGImage, scale: CGFloat) {
     let width = cgImage.width
     let height = cgImage.height
-    self.backdropWidth = width
-    self.backdropHeight = height
-    self.backdropScale = scale
+    backdropWidth = width
+    backdropHeight = height
+    backdropScale = scale
 
     let colorSpace = CGColorSpaceCreateDeviceRGB()
     guard let context = CGContext(
@@ -2446,7 +2518,7 @@ final class AreaSelectionOverlayView: NSView {
       space: colorSpace,
       bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue
     ) else {
-      self.backdropPixelDataArray = nil
+      backdropPixelDataArray = nil
       DiagnosticLogger.shared.log(
         .error,
         .capture,
@@ -2457,13 +2529,13 @@ final class AreaSelectionOverlayView: NSView {
     }
 
     context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
-    
+
     if let dataPtr = context.data {
       let totalBytes = width * height * 4
       let bufferPointer = UnsafeBufferPointer(start: dataPtr.assumingMemoryBound(to: UInt8.self), count: totalBytes)
-      self.backdropPixelDataArray = Array(bufferPointer)
+      backdropPixelDataArray = Array(bufferPointer)
     } else {
-      self.backdropPixelDataArray = nil
+      backdropPixelDataArray = nil
     }
 
     DiagnosticLogger.shared.log(
@@ -2474,7 +2546,7 @@ final class AreaSelectionOverlayView: NSView {
         "width": "\(width)",
         "height": "\(height)",
         "scale": "\(scale)",
-        "cachedBytes": "\(self.backdropPixelDataArray?.count ?? 0)"
+        "cachedBytes": "\(backdropPixelDataArray?.count ?? 0)",
       ]
     )
   }
@@ -2506,8 +2578,8 @@ final class AreaSelectionOverlayView: NSView {
     var totalLuma = 0.0
     var sampleCount = 0
 
-    for row in 0..<gridCount {
-      for col in 0..<gridCount {
+    for row in 0 ..< gridCount {
+      for col in 0 ..< gridCount {
         let pctX = Double(col + 1) / Double(gridCount + 1)
         let pctY = Double(row + 1) / Double(gridCount + 1)
 
@@ -2592,8 +2664,9 @@ final class AreaSelectionOverlayView: NSView {
   func applyBackdrop(_ backdrop: AreaSelectionBackdrop, animated: Bool = false) {
     let shouldAnimate = animated
       && BackdropTransitionEffect.shouldCrossfade(
-           isReapplication: currentBackdropImage != nil,
-           isVisible: backdrop.isVisible)
+        isReapplication: currentBackdropImage != nil,
+        isVisible: backdrop.isVisible
+      )
 
     // Frame, scale, and visibility are never animated.
     CATransaction.begin()
@@ -2613,7 +2686,7 @@ final class AreaSelectionOverlayView: NSView {
     snapshotLayer.contents = backdrop.image
     CATransaction.commit()
 
-    self.currentBackdropImage = backdrop.image
+    currentBackdropImage = backdrop.image
     cacheBackdropPixels(from: backdrop.image, scale: backdrop.scaleFactor)
     if magnifier.zoom > 1.0 {
       updateMagnifier(at: currentMousePosition)
@@ -2673,42 +2746,60 @@ final class AreaSelectionOverlayView: NSView {
     }
   }
 
+  #if DEBUG
 
-#if DEBUG
+    var testSnapshotLayer: CALayer {
+      snapshotLayer
+    }
 
-  var testSnapshotLayer: CALayer { snapshotLayer }
-  var testBackdropPixelDataArray: [UInt8]? { backdropPixelDataArray }
-  var testMagnifierZoom: CGFloat {
-    get { magnifier.zoom }
-    set { magnifier.zoom = newValue }
-  }
-  func testUpdateMagnifier(at point: CGPoint) {
-    updateMagnifier(at: point)
-  }
-  var testMagnifierContainerLayer: CALayer? {
-    magnifier.containerLayer
-  }
-  var testMagnifierImageLayer: CALayer? {
-    magnifier.imageLayer
-  }
-  var testReverseMagnifierZoomDirection: Bool {
-    get { magnifier.reverseZoomDirection }
-    set { magnifier.reverseZoomDirection = newValue }
-  }
-  func testScrollWheel(deltaY: CGFloat, modifierFlags: NSEvent.ModifierFlags, hasPreciseScrollingDeltas: Bool = false) {
-    if modifierFlags.contains(.command) {
-      if deltaY != 0 {
-        if magnifier.handleScroll(delta: deltaY, hasPreciseScrollingDeltas: hasPreciseScrollingDeltas) {
-          updateMagnifier(at: currentMousePosition)
+    var testBackdropPixelDataArray: [UInt8]? {
+      backdropPixelDataArray
+    }
+
+    var testMagnifierZoom: CGFloat {
+      get { magnifier.zoom }
+      set { magnifier.zoom = newValue }
+    }
+
+    func testUpdateMagnifier(at point: CGPoint) {
+      updateMagnifier(at: point)
+    }
+
+    var testMagnifierContainerLayer: CALayer? {
+      magnifier.containerLayer
+    }
+
+    var testMagnifierImageLayer: CALayer? {
+      magnifier.imageLayer
+    }
+
+    var testReverseMagnifierZoomDirection: Bool {
+      get { magnifier.reverseZoomDirection }
+      set { magnifier.reverseZoomDirection = newValue }
+    }
+
+    func testScrollWheel(
+      deltaY: CGFloat,
+      modifierFlags: NSEvent.ModifierFlags,
+      hasPreciseScrollingDeltas: Bool = false
+    ) {
+      if modifierFlags.contains(.command) {
+        if deltaY != 0 {
+          if magnifier.handleScroll(delta: deltaY, hasPreciseScrollingDeltas: hasPreciseScrollingDeltas) {
+            updateMagnifier(at: currentMousePosition)
+          }
         }
       }
     }
-  }
-  var testSizeIndicatorTextLayer: CATextLayer { sizeIndicatorTextLayer }
-  var testSizeIndicatorBackgroundLayer: CALayer { sizeIndicatorBackgroundLayer }
-#endif
 
+    var testSizeIndicatorTextLayer: CATextLayer {
+      sizeIndicatorTextLayer
+    }
 
+    var testSizeIndicatorBackgroundLayer: CALayer {
+      sizeIndicatorBackgroundLayer
+    }
+  #endif
 
   /// Initialize crosshair at current mouse position (called on activation)
   private func initializeCrosshairAtCurrentMousePosition() {
@@ -2716,7 +2807,7 @@ final class AreaSelectionOverlayView: NSView {
     let mouseLocationInScreen = NSEvent.mouseLocation
 
     // Convert to window coordinates, then to view coordinates
-    if let window = self.window {
+    if let window {
       let mouseLocationInWindow = window.convertPoint(fromScreen: mouseLocationInScreen)
       currentMousePosition = convert(mouseLocationInWindow, from: nil)
     } else {
@@ -2731,7 +2822,7 @@ final class AreaSelectionOverlayView: NSView {
   /// Current mouse location converted to view coordinates, falling back to the last
   /// tracked position when the view has no window (e.g. unit tests).
   private func currentLocalMousePoint() -> CGPoint {
-    if let window = self.window {
+    if let window {
       return convert(window.convertPoint(fromScreen: NSEvent.mouseLocation), from: nil)
     }
     return currentMousePosition
@@ -2764,8 +2855,8 @@ final class AreaSelectionOverlayView: NSView {
 
   // MARK: - First Mouse
 
-  override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
-    return true
+  override func acceptsFirstMouse(for _: NSEvent?) -> Bool {
+    true
   }
 
   override var acceptsFirstResponder: Bool {
@@ -2910,11 +3001,12 @@ final class AreaSelectionOverlayView: NSView {
   }
 
   /// Drawn replacement for the system cursor in live-passthrough sessions. The system
-  /// cursor cannot reliably be hidden from a background agent (see
-  /// `LivePassthroughCursorHider`), so the exact legacy cursor image (`activeCursor` —
-  /// crosshair in manual mode, camera in window mode, arrow fallback) is drawn at the
-  /// pointer with the same hotspot, giving pixel-parity with the window-event path.
-  /// The position follows `currentMousePosition`, which hover and drag renders keep fresh.
+  /// cursor is hidden for the session (`BackgroundCursorControl` +
+  /// `LivePassthroughCursorHider`), so this proxy renders the visible cursor: the exact
+  /// legacy cursor image (`activeCursor` — crosshair in manual mode, camera in window
+  /// mode, arrow fallback) is drawn at the pointer with the same hotspot, giving
+  /// pixel-parity with the window-event path. The position follows `currentMousePosition`,
+  /// which hover and drag renders keep fresh.
   private func updateCursorProxy() {
     guard isLivePassthroughInput, isMouseOver else {
       cursorProxyLayer.isHidden = true
@@ -2937,19 +3029,19 @@ final class AreaSelectionOverlayView: NSView {
   }
 
   #if DEBUG
-  var testMouseLocationOverride: CGPoint?
+    var testMouseLocationOverride: CGPoint?
   #endif
 
   private var isMouseOver: Bool {
     #if DEBUG
-    if NSClassFromString("XCTestCase") != nil, self.window == nil {
-      return true
-    }
-    let mouseLocation = testMouseLocationOverride ?? NSEvent.mouseLocation
+      if NSClassFromString("XCTestCase") != nil, self.window == nil {
+        return true
+      }
+      let mouseLocation = testMouseLocationOverride ?? NSEvent.mouseLocation
     #else
-    let mouseLocation = NSEvent.mouseLocation
+      let mouseLocation = NSEvent.mouseLocation
     #endif
-    guard let window = self.window,
+    guard let window,
           window.isVisible,
           window.frame.contains(mouseLocation) else {
       return false
@@ -3046,12 +3138,11 @@ final class AreaSelectionOverlayView: NSView {
       return
     }
 
-    let shortcut: CaptureOverlayShortcut?
-    switch selectionMode {
+    let shortcut: CaptureOverlayShortcut? = switch selectionMode {
     case .screenshot, .scrollingCapture:
-      shortcut = CaptureOverlayShortcutSettings.applicationCaptureShortcut
+      CaptureOverlayShortcutSettings.applicationCaptureShortcut
     case .recording:
-      shortcut = CaptureOverlayShortcutSettings.recordingApplicationCaptureShortcut
+      CaptureOverlayShortcutSettings.recordingApplicationCaptureShortcut
     }
 
     guard let shortcut, !shortcut.isIndependent else {
@@ -3109,7 +3200,7 @@ final class AreaSelectionOverlayView: NSView {
     guard interactionMode == .manualRegion else { return }
 
     let localCurrentPoint: CGPoint?
-    if let currentScreenPoint, let window = self.window {
+    if let currentScreenPoint, let window {
       let pointInWindow = window.convertPoint(fromScreen: currentScreenPoint)
       localCurrentPoint = convert(pointInWindow, from: nil)
       currentMousePosition = localCurrentPoint ?? currentMousePosition
@@ -3126,7 +3217,6 @@ final class AreaSelectionOverlayView: NSView {
     updateCursorProxy()
 
     guard let screenRect, !screenRect.isEmpty else {
-
       CATransaction.begin()
       CATransaction.setDisableActions(true)
       hasVisibleSelectionRect = false
@@ -3211,7 +3301,7 @@ final class AreaSelectionOverlayView: NSView {
       return
     }
     let localPoint: CGPoint
-    if let window = self.window {
+    if let window {
       let mouseLocationInWindow = window.convertPoint(fromScreen: NSEvent.mouseLocation)
       localPoint = convert(mouseLocationInWindow, from: nil)
     } else {
@@ -3275,7 +3365,7 @@ final class AreaSelectionOverlayView: NSView {
   }
 
   private func convertToLocalRect(_ screenRect: CGRect) -> CGRect {
-    guard let window = self.window else { return screenRect }
+    guard let window else { return screenRect }
     return CGRect(
       x: screenRect.origin.x - window.frame.origin.x,
       y: screenRect.origin.y - window.frame.origin.y,
@@ -3306,7 +3396,7 @@ final class AreaSelectionOverlayView: NSView {
     handlePrimaryMouseMoved(at: convert(event.locationInWindow, from: nil))
   }
 
-  override func rightMouseDown(with event: NSEvent) {
+  override func rightMouseDown(with _: NSEvent) {
     guard !isLivePassthroughInput else { return }
     delegate?.overlayViewDidCancel(self)
   }
@@ -3337,7 +3427,7 @@ final class AreaSelectionOverlayView: NSView {
   }
 
   private func localPoint(fromScreenPoint screenPoint: CGPoint) -> CGPoint? {
-    guard let window = self.window else { return nil }
+    guard let window else { return nil }
     return convert(window.convertPoint(fromScreen: screenPoint), from: nil)
   }
 
@@ -3345,7 +3435,7 @@ final class AreaSelectionOverlayView: NSView {
 
   private func handlePrimaryMouseDown(at point: CGPoint) {
     currentMousePosition = point
-    if let areaWindow = self.window as? AreaSelectionWindow {
+    if let areaWindow = window as? AreaSelectionWindow {
       DiagnosticLogger.shared.log(
         .debug,
         .capture,
@@ -3370,7 +3460,7 @@ final class AreaSelectionOverlayView: NSView {
       }
       return
     }
-    activeCursor.set()
+    applyActiveCursor()
     switch interactionMode {
     case .manualRegion:
       isSelecting = true
@@ -3389,7 +3479,7 @@ final class AreaSelectionOverlayView: NSView {
       }
       return
     }
-    activeCursor.set()
+    applyActiveCursor()
     switch interactionMode {
     case .manualRegion:
       guard isSelecting else { return }
@@ -3425,7 +3515,7 @@ final class AreaSelectionOverlayView: NSView {
   private func handlePrimaryMouseMoved(at point: CGPoint) {
     currentMousePosition = point
     delegate?.overlayViewDidRequestDisplayActivation(self)
-    activeCursor.set()
+    applyActiveCursor()
     updateCoordinateIndicator(at: point)
     updateCursorProxy()
     guard selectionEnabled else { return }
@@ -3443,7 +3533,8 @@ final class AreaSelectionOverlayView: NSView {
   private var activeCursor: NSCursor {
     switch interactionMode {
     case .manualRegion:
-      return showSelectionAreaOverlay ? NSCursor.vectorScreenshotCrosshairLight : NSCursor.vectorScreenshotCrosshairHighContrast
+      return showSelectionAreaOverlay ? NSCursor.vectorScreenshotCrosshairLight : NSCursor
+        .vectorScreenshotCrosshairHighContrast
     case .applicationWindow:
       guard selectionEnabled else { return .arrow }
       return NSCursor.applicationWindowCursor
@@ -3456,16 +3547,17 @@ final class AreaSelectionOverlayView: NSView {
 }
 
 // MARK: - Recreated macOS Crosshair Cursors
+
 extension NSCursor {
   static var vectorScreenshotCrosshairHighContrast: NSCursor = {
     let size = NSSize(width: 32, height: 32)
     let image = NSImage(size: size)
     image.isTemplate = false
-    
+
     image.lockFocus()
     NSColor.clear.set()
     NSRect(origin: .zero, size: size).fill()
-    
+
     let verticalPath = NSBezierPath()
     // Bottom segment (y: 5 to 16)
     verticalPath.move(to: NSPoint(x: 15.5, y: 5))
@@ -3473,7 +3565,7 @@ extension NSCursor {
     // Top segment (y: 17 to 28)
     verticalPath.move(to: NSPoint(x: 15.5, y: 17))
     verticalPath.line(to: NSPoint(x: 15.5, y: 28))
-    
+
     let horizontalPath = NSBezierPath()
     // Left segment (x: 4 to 15)
     horizontalPath.move(to: NSPoint(x: 4, y: 16.5))
@@ -3481,23 +3573,23 @@ extension NSCursor {
     // Right segment (x: 16 to 27)
     horizontalPath.move(to: NSPoint(x: 16, y: 16.5))
     horizontalPath.line(to: NSPoint(x: 27, y: 16.5))
-    
+
     let circleRect = NSRect(x: 9.5, y: 10.5, width: 12.0, height: 12.0)
     let circlePath = NSBezierPath(ovalIn: circleRect)
-    
+
     // Circle fill (no shadow) - black with alpha 0.15 matching native A=38
     NSColor.black.withAlphaComponent(0.15).setFill()
     circlePath.fill()
-    
+
     // Configure white shadow for high contrast on dark backgrounds
     let shadow = NSShadow()
     shadow.shadowColor = NSColor.white.withAlphaComponent(0.65)
     shadow.shadowOffset = .zero
     shadow.shadowBlurRadius = 1.5
-    
+
     NSGraphicsContext.current?.saveGraphicsState()
     shadow.set()
-    
+
     // Draw dark core lines (width 1.0) with shadow - white 0.20, alpha 0.85 matching native (51,51,51,217)
     let lineColor = NSColor(white: 0.20, alpha: 0.85)
     lineColor.setStroke()
@@ -3505,14 +3597,14 @@ extension NSCursor {
     verticalPath.stroke()
     horizontalPath.lineWidth = 1.0
     horizontalPath.stroke()
-    
+
     // Circle dark stroke - black with alpha 0.32 matching native A=81
     NSColor.black.withAlphaComponent(0.32).setStroke()
     circlePath.lineWidth = 1.0
     circlePath.stroke()
-    
+
     NSGraphicsContext.current?.restoreGraphicsState()
-    
+
     image.unlockFocus()
     return NSCursor(image: image, hotSpot: NSPoint(x: 15, y: 15))
   }()
@@ -3521,11 +3613,11 @@ extension NSCursor {
     let size = NSSize(width: 32, height: 32)
     let image = NSImage(size: size)
     image.isTemplate = false
-    
+
     image.lockFocus()
     NSColor.clear.set()
     NSRect(origin: .zero, size: size).fill()
-    
+
     let verticalPath = NSBezierPath()
     // Bottom segment (y: 5 to 16)
     verticalPath.move(to: NSPoint(x: 15.5, y: 5))
@@ -3533,7 +3625,7 @@ extension NSCursor {
     // Top segment (y: 17 to 28)
     verticalPath.move(to: NSPoint(x: 15.5, y: 17))
     verticalPath.line(to: NSPoint(x: 15.5, y: 28))
-    
+
     let horizontalPath = NSBezierPath()
     // Left segment (x: 4 to 15)
     horizontalPath.move(to: NSPoint(x: 4, y: 16.5))
@@ -3541,39 +3633,39 @@ extension NSCursor {
     // Right segment (x: 16 to 27)
     horizontalPath.move(to: NSPoint(x: 16, y: 16.5))
     horizontalPath.line(to: NSPoint(x: 27, y: 16.5))
-    
+
     let circleRect = NSRect(x: 9.5, y: 10.5, width: 12.0, height: 12.0)
     let circlePath = NSBezierPath(ovalIn: circleRect)
-    
+
     let lightColor = NSColor.white
-    
+
     // Circle fill (no shadow)
     lightColor.withAlphaComponent(0.15).setFill()
     circlePath.fill()
-    
+
     // Configure black shadow for white lines
     let shadow = NSShadow()
     shadow.shadowColor = NSColor.black.withAlphaComponent(0.35)
     shadow.shadowOffset = NSSize(width: 0, height: -1.0)
     shadow.shadowBlurRadius = 1.0
-    
+
     NSGraphicsContext.current?.saveGraphicsState()
     shadow.set()
-    
+
     // Draw clean single light-colored line with shadow
     lightColor.withAlphaComponent(0.85).setStroke()
     verticalPath.lineWidth = 1.0
     verticalPath.stroke()
     horizontalPath.lineWidth = 1.0
     horizontalPath.stroke()
-    
+
     // Circle stroke - white with alpha 0.30 matching native A=81 proportion
     lightColor.withAlphaComponent(0.30).setStroke()
     circlePath.lineWidth = 1.0
     circlePath.stroke()
-    
+
     NSGraphicsContext.current?.restoreGraphicsState()
-    
+
     image.unlockFocus()
     return NSCursor(image: image, hotSpot: NSPoint(x: 15, y: 15))
   }()
@@ -3590,9 +3682,9 @@ extension NSCursor {
 
     guard
       let whiteSymbol = NSImage(systemSymbolName: "camera.fill", accessibilityDescription: nil)?
-        .withSymbolConfiguration(whiteConfig),
+      .withSymbolConfiguration(whiteConfig),
       let blackSymbol = NSImage(systemSymbolName: "camera.fill", accessibilityDescription: nil)?
-        .withSymbolConfiguration(blackConfig)
+      .withSymbolConfiguration(blackConfig)
     else {
       return .pointingHand
     }
