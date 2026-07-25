@@ -556,7 +556,8 @@ final class AreaSelectionController: NSObject {
     }
 
     // Mirror the legacy appearance: window-selection mode always shows the dim (with a
-    // cutout on the hovered window), manual region keeps it hidden until the first drag.
+    // cutout on the hovered window); manual region shows it from session start when the
+    // selection-area-overlay preference is on, otherwise the first drag reveals it.
     updateLivePassthroughDimVisibility()
 
     startWindowSelectionPreparationIfNeeded()
@@ -1259,8 +1260,9 @@ final class AreaSelectionController: NSObject {
   }
 
   /// Show the dim layer on the first consumed drag and keep it for the remainder of the
-  /// session. Before the drag it stays hidden so tooltips/hover cards beneath the
-  /// transparent overlay remain fully visible (matches CleanShot behavior).
+  /// session. With the selection-area-overlay preference on the dim is already visible from
+  /// session start, so this only matters for the preference-off case (where the dim layer is
+  /// colorless and revealing it is a visual no-op).
   private func revealLivePassthroughDimIfNeeded() {
     guard isLivePassthroughInputActive, !hasRevealedLivePassthroughDim else { return }
     hasRevealedLivePassthroughDim = true
@@ -1271,7 +1273,9 @@ final class AreaSelectionController: NSObject {
     LivePassthroughInputLogic.showsDim(
       interactionMode: interactionMode,
       hasRevealedDim: hasRevealedLivePassthroughDim,
-      isDragging: manualSelectionStartPoint != nil
+      isDragging: manualSelectionStartPoint != nil,
+      showsDimFromStart: UserDefaults.standard
+        .object(forKey: PreferencesKeys.screenshotShowSelectionAreaOverlay) as? Bool ?? true
     )
   }
 
@@ -1506,6 +1510,7 @@ final class AreaSelectionController: NSObject {
 
     guard let rect = manualSelectionRect, rect.width > 5, rect.height > 5 else {
       clearManualSelectionTracking(render: true)
+      restoreLivePassthroughHoverAfterAbortedSelection(at: screenPoint)
       return
     }
 
@@ -1650,6 +1655,19 @@ final class AreaSelectionController: NSObject {
         window.overlayView.resetSelection()
       }
     }
+  }
+
+  /// A tap (mouseDown+Up with no drag) aborts the selection: the per-window
+  /// `resetSelection()` above cleared the drawn crosshair and coordinate indicator.
+  /// Re-run the hover pipeline at the tap point so both reappear exactly as after any
+  /// hover move — cursor proxy on the pointer display only, indicators hidden on the
+  /// other displays. The coalescing gate is reset first so the stationary tap point
+  /// (already the last processed hover point) is not dropped as a sub-pixel move.
+  /// No-op outside live-passthrough sessions, where window events keep hover alive.
+  private func restoreLivePassthroughHoverAfterAbortedSelection(at screenPoint: CGPoint) {
+    guard isPresenting, isLivePassthroughInputActive else { return }
+    lastProcessedLivePassthroughHoverPoint = nil
+    processLivePassthroughHover(at: screenPoint)
   }
 
   private func applyDeferredBackdropsIfPossible() {
@@ -2149,9 +2167,15 @@ final class AreaSelectionOverlayView: NSView {
   private let overlayFont = NSFont.systemFont(ofSize: 12, weight: .medium)
   private var selectionEnabled = true
   /// Live-passthrough sessions drive the selection gesture from the capture event tap;
-  /// the view's own mouse handlers stay inert (the panel gets no events anyway) and the
-  /// dim layer starts hidden until the first drag reveals it.
+  /// the view's own mouse handlers stay inert (the panel gets no events anyway). The dim
+  /// layer starts hidden here; the controller drives its visibility afterwards via
+  /// `setLivePassthroughDimHidden(_:)`.
   private var isLivePassthroughInput = false
+  /// Set once the event tap has delivered a real pointer position. While a passthrough
+  /// session runs, the tap consumes every mouse move, so `NSEvent.mouseLocation` stays
+  /// frozen at the session-start position — code that needs the pointer must read the
+  /// tap-tracked `currentMousePosition` instead of the stale system location.
+  private var hasLivePassthroughPointerPosition = false
 
   /// Disabled animations for instant layer updates
   private var disabledActions: [String: CAAction] {
@@ -2460,13 +2484,15 @@ final class AreaSelectionOverlayView: NSView {
     isLivePassthroughInput = enabled
     dimLayer.isHidden = enabled
     if !enabled {
+      hasLivePassthroughPointerPosition = false
       hideCursorProxy()
     }
   }
 
   /// Set dim layer visibility in a live-passthrough session. Driven by the controller's
-  /// `updateLivePassthroughDimVisibility()` — hidden pre-drag in manual mode, always
-  /// visible in window-selection mode (mirroring the legacy window-event appearance).
+  /// `updateLivePassthroughDimVisibility()` — in manual mode visible from session start when
+  /// the selection-area-overlay preference is on (otherwise revealed by the first drag),
+  /// always visible in window-selection mode (mirroring the legacy window-event appearance).
   /// No-op outside passthrough mode.
   func setLivePassthroughDimHidden(_ hidden: Bool) {
     guard isLivePassthroughInput else { return }
@@ -2816,10 +2842,23 @@ final class AreaSelectionOverlayView: NSView {
     var testSizeIndicatorBackgroundLayer: CALayer {
       sizeIndicatorBackgroundLayer
     }
+
+    var testCurrentMousePosition: CGPoint {
+      currentMousePosition
+    }
+
+    var testCursorProxyLayer: CALayer {
+      cursorProxyLayer
+    }
   #endif
 
   /// Initialize crosshair at current mouse position (called on activation)
   private func initializeCrosshairAtCurrentMousePosition() {
+    // Live passthrough: the event tap consumes every mouse move, so `NSEvent.mouseLocation`
+    // is frozen at the session-start position. Once the tap has delivered a real position
+    // keep it — re-reading the stale system location would snap the crosshair and the
+    // coordinate indicator back to where the session started (observed after a tap).
+    guard !(isLivePassthroughInput && hasLivePassthroughPointerPosition) else { return }
     // Get the current mouse location in screen coordinates
     let mouseLocationInScreen = NSEvent.mouseLocation
 
@@ -2839,6 +2878,11 @@ final class AreaSelectionOverlayView: NSView {
   /// Current mouse location converted to view coordinates, falling back to the last
   /// tracked position when the view has no window (e.g. unit tests).
   private func currentLocalMousePoint() -> CGPoint {
+    // Live passthrough: `NSEvent.mouseLocation` is stale (see
+    // `initializeCrosshairAtCurrentMousePosition`); the tap-tracked position is fresh.
+    if isLivePassthroughInput, hasLivePassthroughPointerPosition {
+      return currentMousePosition
+    }
     if let window {
       return convert(window.convertPoint(fromScreen: NSEvent.mouseLocation), from: nil)
     }
@@ -3054,6 +3098,17 @@ final class AreaSelectionOverlayView: NSView {
       if NSClassFromString("XCTestCase") != nil, self.window == nil {
         return true
       }
+    #endif
+    // Live passthrough: `NSEvent.mouseLocation` is frozen at the session-start position
+    // (the tap consumes every move), so hit-test the tap-tracked pointer position
+    // instead — otherwise the coordinate indicator and cursor proxy follow the stale
+    // point, and vanish entirely once the pointer is on another display.
+    if isLivePassthroughInput, hasLivePassthroughPointerPosition {
+      guard let window, window.isVisible else { return false }
+      let pointerOnScreen = window.convertPoint(toScreen: convert(currentMousePosition, to: nil))
+      return window.frame.contains(pointerOnScreen)
+    }
+    #if DEBUG
       let mouseLocation = testMouseLocationOverride ?? NSEvent.mouseLocation
     #else
       let mouseLocation = NSEvent.mouseLocation
@@ -3425,21 +3480,25 @@ final class AreaSelectionOverlayView: NSView {
   /// tap-driven input on the exact same code path as the window-event fallback.
   func handleLivePassthroughMouseDown(atScreenPoint screenPoint: CGPoint) {
     guard isLivePassthroughInput, let localPoint = localPoint(fromScreenPoint: screenPoint) else { return }
+    hasLivePassthroughPointerPosition = true
     handlePrimaryMouseDown(at: localPoint)
   }
 
   func handleLivePassthroughMouseDragged(atScreenPoint screenPoint: CGPoint) {
     guard isLivePassthroughInput, let localPoint = localPoint(fromScreenPoint: screenPoint) else { return }
+    hasLivePassthroughPointerPosition = true
     handlePrimaryMouseDragged(at: localPoint)
   }
 
   func handleLivePassthroughMouseUp(atScreenPoint screenPoint: CGPoint) {
     guard isLivePassthroughInput, let localPoint = localPoint(fromScreenPoint: screenPoint) else { return }
+    hasLivePassthroughPointerPosition = true
     handlePrimaryMouseUp(at: localPoint)
   }
 
   func handleLivePassthroughMouseMoved(atScreenPoint screenPoint: CGPoint) {
     guard isLivePassthroughInput, let localPoint = localPoint(fromScreenPoint: screenPoint) else { return }
+    hasLivePassthroughPointerPosition = true
     handlePrimaryMouseMoved(at: localPoint)
   }
 

@@ -87,12 +87,24 @@ final class LivePassthroughInputLogicTests: XCTestCase {
 
   // MARK: - Dim Driver
 
-  func testShowsDim_manualRegion_preDrag_hidden() {
+  func testShowsDim_manualRegion_preDrag_overlayPrefOn_shown() {
+    XCTAssertTrue(
+      LivePassthroughInputLogic.showsDim(
+        interactionMode: .manualRegion,
+        hasRevealedDim: false,
+        isDragging: false,
+        showsDimFromStart: true
+      )
+    )
+  }
+
+  func testShowsDim_manualRegion_preDrag_overlayPrefOff_hidden() {
     XCTAssertFalse(
       LivePassthroughInputLogic.showsDim(
         interactionMode: .manualRegion,
         hasRevealedDim: false,
-        isDragging: false
+        isDragging: false,
+        showsDimFromStart: false
       )
     )
   }
@@ -102,14 +114,16 @@ final class LivePassthroughInputLogicTests: XCTestCase {
       LivePassthroughInputLogic.showsDim(
         interactionMode: .manualRegion,
         hasRevealedDim: false,
-        isDragging: true
+        isDragging: true,
+        showsDimFromStart: false
       )
     )
     XCTAssertTrue(
       LivePassthroughInputLogic.showsDim(
         interactionMode: .manualRegion,
         hasRevealedDim: true,
-        isDragging: false
+        isDragging: false,
+        showsDimFromStart: false
       )
     )
   }
@@ -119,7 +133,16 @@ final class LivePassthroughInputLogicTests: XCTestCase {
       LivePassthroughInputLogic.showsDim(
         interactionMode: .applicationWindow,
         hasRevealedDim: false,
-        isDragging: false
+        isDragging: false,
+        showsDimFromStart: false
+      )
+    )
+    XCTAssertTrue(
+      LivePassthroughInputLogic.showsDim(
+        interactionMode: .applicationWindow,
+        hasRevealedDim: false,
+        isDragging: false,
+        showsDimFromStart: true
       )
     )
   }

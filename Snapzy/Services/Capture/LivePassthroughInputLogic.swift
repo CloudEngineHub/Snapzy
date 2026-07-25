@@ -37,17 +37,21 @@ enum LivePassthroughInputLogic {
 
   /// Dim visibility in passthrough sessions, mirroring the legacy window-event appearance:
   /// window-selection mode always shows the dim (the hovered window gets a cutout via the
-  /// existing mask); manual region keeps it hidden until the first drag reveals it.
+  /// existing mask); manual region shows it from session start when the selection-area-overlay
+  /// preference is on (`showsDimFromStart`), otherwise the first drag reveals it. When the
+  /// preference is off the dim layer is colorless, so revealing it is a visual no-op — the gate
+  /// only keeps the semantics honest.
   static func showsDim(
     interactionMode: AreaSelectionInteractionMode,
     hasRevealedDim: Bool,
-    isDragging: Bool
+    isDragging: Bool,
+    showsDimFromStart: Bool
   ) -> Bool {
     switch interactionMode {
     case .applicationWindow:
       true
     case .manualRegion:
-      hasRevealedDim || isDragging
+      showsDimFromStart || hasRevealedDim || isDragging
     }
   }
 }
