@@ -551,7 +551,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "保存したスタイル プリセットを適用する"
+            "value": "保存したスタイルプリセットを適用する"
           }
         },
         "ko": {
@@ -616,7 +616,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "曲がり"
+            "value": "湾曲"
           }
         },
         "ko": {
@@ -1916,7 +1916,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "背景が削除されました (クリックして復元します)"
+            "value": "背景を削除しました（クリックで復元）"
           }
         },
         "ko": {
@@ -3996,7 +3996,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "曲がりを反転"
+            "value": "湾曲を反転"
           }
         },
         "ko": {
@@ -4776,7 +4776,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "注釈を付ける"
+            "value": "注釈"
           }
         },
         "ko": {
@@ -5361,7 +5361,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "この画像は以前にクラウドにアップロードされました。保存すると、クラウド ファイルが変更内容で置き換えられます。"
+            "value": "この画像は以前にクラウドにアップロードされました。保存すると、クラウドファイルが変更内容で置き換えられます。"
           }
         },
         "ko": {
@@ -5556,7 +5556,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ピクセル化された"
+            "value": "ピクセル化"
           }
         },
         "ko": {
@@ -6141,7 +6141,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "背景を削除 (安全な場合は自動トリミング)"
+            "value": "背景を削除 (安全な場合は自動切り抜き)"
           }
         },
         "ko": {
@@ -6206,7 +6206,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "カスタム壁紙を削除する"
+            "value": "カスタム壁紙を削除"
           }
         },
         "ko": {
@@ -6921,7 +6921,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "このキャンバス プリセットの名前を入力します。"
+            "value": "このキャンバスプリセットの名前を入力します。"
           }
         },
         "ko": {
@@ -8936,7 +8936,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "現在、現在のキャンバス スタイルをプリセットとして保存できません。"
+            "value": "現在のキャンバススタイルはプリセットとして保存できません。"
           }
         },
         "ko": {

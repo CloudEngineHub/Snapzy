@@ -31,7 +31,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "スナジーの準備は完了です。メニュー バーからアクセスするか、キーボード ショートカットを使用します。"
+            "value" : "Snapzy の準備が完了しました。メニューバーからアクセスするか、キーボードショートカットを使用してください。"
           }
         },
         "ko" : {
@@ -1331,7 +1331,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Snapzy キャプチャのフォルダーを選択します (デフォルト: Desktop/Snapzy)"
+            "value" : "Snapzy キャプチャのフォルダを選択します (デフォルト: Desktop/Snapzy)"
           }
         },
         "ko" : {
@@ -1396,7 +1396,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "アクセスを許可する"
+            "value" : "アクセスを許可"
           }
         },
         "ko" : {
@@ -1656,7 +1656,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "グローバル ショートカットのオプション"
+            "value" : "グローバルショートカットに使用"
           }
         },
         "ko" : {
@@ -1721,7 +1721,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "音声録音の場合はオプション"
+            "value" : "音声の録音に使用"
           }
         },
         "ko" : {
@@ -1786,7 +1786,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "やめる"
+            "value" : "終了"
           }
         },
         "ko" : {
@@ -1981,7 +1981,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "保存フォルダー"
+            "value" : "保存フォルダ"
           }
         },
         "ko" : {
@@ -2111,7 +2111,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Snapzy には、キャプチャ、オーディオ、および場所の保存に対する権限が必要です。"
+            "value" : "Snapzy にはキャプチャ、オーディオ、保存先へのアクセス権限が必要です。"
           }
         },
         "ko" : {
@@ -2433,7 +2433,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "設定フォルダー"
+            "value" : "設定フォルダ"
           }
         },
         "ko" : {
@@ -2625,7 +2625,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "これは Snapzy に設定フォルダーへのアクセスだけを許可します。秘密情報を読み込んだりファイルをスキャンしたりしません。"
+            "value" : "これは Snapzy に設定フォルダへのアクセスだけを許可します。秘密情報を読み込んだりファイルをスキャンしたりしません。"
           }
         },
         "ko" : {
@@ -2818,7 +2818,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "[環境設定] → [ショートカット] でいつでもショートカットをカスタマイズしたりオフにしたりできます。"
+            "value" : "[設定] → [ショートカット] でいつでもショートカットをカスタマイズしたりオフにしたりできます。"
           }
         },
         "ko" : {
@@ -2883,7 +2883,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "はい、ショートカットを有効にします"
+            "value" : "はい、ショートカットを有効にする"
           }
         },
         "ko" : {
@@ -2948,7 +2948,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "システム設定 → キーボード → キーボード ショートカットを開きます"
+            "value" : "システム設定 → キーボード → キーボードショートカットを開きます"
           }
         },
         "ko" : {
@@ -3078,7 +3078,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "残しておきたい Snapzy ショートカットと重複する macOS スクリーンショット ショートカットのチェックを外します"
+            "value" : "残しておきたい Snapzy ショートカットと重複する macOS スクリーンショットショートカットのチェックを外します"
           }
         },
         "ko" : {
@@ -3208,7 +3208,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "いいえ、ありがとう"
+            "value" : "いいえ、結構です"
           }
         },
         "ko" : {
@@ -3338,7 +3338,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "」を開きます。 macOS ショートカットの重複を解決"
+            "value" : "macOS ショートカットの重複を解決"
           }
         },
         "ko" : {
@@ -3403,7 +3403,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "録音"
+            "value" : "録画"
           }
         },
         "ko" : {
@@ -3533,7 +3533,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "素早くアクセスできるように、システム ショートカットを Snapzy に割り当てます。"
+            "value" : "素早くアクセスできるように、システムショートカットを Snapzy に割り当てます。"
           }
         },
         "ko" : {
@@ -3663,7 +3663,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "残りの設定はすべてデフォルトを使用します。後で [環境設定] でいつでも変更できます。"
+            "value" : "残りの設定はすべてデフォルトを使用します。後で [設定] でいつでも変更できます。"
           }
         },
         "ko" : {
@@ -3793,7 +3793,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "キーボード ショートカット — システムのデフォルト"
+            "value" : "キーボードショートカット — システムのデフォルト"
           }
         },
         "ko" : {
@@ -4053,7 +4053,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "サポートはオプションです。 Snapzy はスポンサーなしでも引き続き完全に使用できます。"
+            "value" : "支援は任意です。Snapzy はスポンサーなしでも引き続き完全に使用できます。"
           }
         },
         "ko" : {
@@ -4118,7 +4118,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "著者のスポンサー"
+            "value" : "作者を支援する"
           }
         },
         "ko" : {
@@ -4573,7 +4573,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Enter ↵"
+            "value" : "Enter ↵ を押してください"
           }
         },
         "ko" : {
@@ -4638,7 +4638,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "を押してください。スクリーンショットと記録、簡略化。"
+            "value" : "スクリーンショットと録画を、シンプルに。"
           }
         },
         "ko" : {

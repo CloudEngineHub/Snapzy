@@ -746,7 +746,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "キャプチャまたは記録の進行中はキャッシュをクリアできません。"
+            "value": "キャプチャまたは録画の進行中はキャッシュをクリアできません。"
           }
         },
         "ko": {
@@ -3413,7 +3413,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "表示期間"
+            "value": "表示時間"
           }
         },
         "ko": {
@@ -3478,7 +3478,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "バッジのテキスト サイズ (%dpt)"
+            "value": "バッジのテキストサイズ (%dpt)"
           }
         },
         "ko": {
@@ -3543,7 +3543,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "フォント サイズ"
+            "value": "フォントサイズ"
           }
         },
         "ko": {
@@ -3673,7 +3673,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "フレーム レート"
+            "value": "フレームレート"
           }
         },
         "ko": {
@@ -3933,7 +3933,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "デスクトップ ウィジェットを非表示にする"
+            "value": "デスクトップウィジェットを非表示にする"
           }
         },
         "ko": {
@@ -4518,7 +4518,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "キャプチャした画像に注釈を付けるなどの Snapzy ウィンドウを表示する"
+            "value": "キャプチャした画像に注釈などの Snapzy ウィンドウを表示する"
           }
         },
         "ko": {
@@ -5560,7 +5560,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "記録領域へのバッジの配置"
+            "value": "録画領域内のバッジの配置"
           }
         },
         "ko": {
@@ -5690,7 +5690,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "品質が高い = ファイル サイズが大きくなる"
+            "value": "品質が高い = ファイルサイズが大きくなる"
           }
         },
         "ko": {
@@ -5885,7 +5885,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "録画したビデオとGIFにマウス ポインタを含める"
+            "value": "録画したビデオとGIFにマウスポインタを含める"
           }
         },
         "ko": {
@@ -6015,7 +6015,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "記録テンプレート"
+            "value": "録画テンプレート"
           }
         },
         "ko": {
@@ -6080,7 +6080,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "次のキャプチャ時に以前の記録領域を復元します"
+            "value": "次のキャプチャ時に以前の録画領域を復元します"
           }
         },
         "ko": {
@@ -6145,7 +6145,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "最後のエリアを記憶"
+            "value": "最後の領域を記憶"
           }
         },
         "ko": {
@@ -6405,7 +6405,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "リップル数​​"
+            "value": "リップル数"
           }
         },
         "ko": {
@@ -6600,7 +6600,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "スクリーンショット テンプレート"
+            "value": "スクリーンショットテンプレート"
           }
         },
         "ko": {
@@ -6730,7 +6730,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "捕獲後"
+            "value": "キャプチャ後"
           }
         },
         "ko": {
@@ -7055,7 +7055,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "キーストローク オーバーレイ"
+            "value": "キーストロークオーバーレイ"
           }
         },
         "ko": {
@@ -7316,7 +7316,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "録音動作"
+            "value": "録画の動作"
           }
         },
         "ko": {
@@ -7381,7 +7381,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "記録フォーマット"
+            "value": "録画フォーマット"
           }
         },
         "ko": {
@@ -7446,7 +7446,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "録音品質"
+            "value": "録画品質"
           }
         },
         "ko": {
@@ -7640,7 +7640,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "スクロール キャプチャ"
+            "value": "スクロールキャプチャ"
           }
         },
         "ko": {
@@ -7705,7 +7705,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "キャプチャしたスクリーンショットにマウス ポインタを含める"
+            "value": "キャプチャしたスクリーンショットにマウスポインタを含める"
           }
         },
         "ko": {
@@ -7835,7 +7835,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "スクロール キャプチャ セッションを開始するときにガイダンスを表示したままにする"
+            "value": "スクロールキャプチャセッションを開始するときにガイダンスを表示したままにする"
           }
         },
         "ko": {
@@ -10370,7 +10370,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "現在のキャプチャをロックしています。 Snapzy は、保存する前に %d 個のステッチされたフレームをシールしています。"
+            "value": "現在のキャプチャをロックしています。Snapzy は、保存する前に %d 個のステッチされたフレームを確定しています。"
           }
         },
         "ko": {
@@ -11020,7 +11020,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "地域が更新されました。移動するコンテンツのみを内部に残し、「キャプチャ開始」を押します。キャンセルするには Esc を押してください。"
+            "value": "領域を更新しました。移動するコンテンツのみを内側に残し、「キャプチャ開始」を押します。キャンセルするには Esc を押してください。"
           }
         },
         "ko": {
@@ -11605,7 +11605,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "捕獲されました"
+            "value": "キャプチャ済み"
           }
         },
         "ko": {
@@ -12580,7 +12580,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Snapzy がステッチされたフレームをロックしている間、ライブ プレビューが実行されます。"
+            "value": "Snapzy がステッチされたフレームをロックしている間、ライブプレビューが実行されます。"
           }
         },
         "ko": {
@@ -12710,7 +12710,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "保存に失敗しました。ステッチされた結果はまだ準備ができています"
+            "value": "保存に失敗しました • ステッチ結果は保持されています"
           }
         },
         "ko": {
@@ -12905,7 +12905,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "エリアが更新されました"
+            "value": "領域を更新"
           }
         },
         "ko": {
@@ -13035,7 +13035,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "現在の結果はまだ準備中です"
+            "value": "現在の結果は保存できます"
           }
         },
         "ko": {
@@ -13295,7 +13295,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "そのままにしておいてください"
+            "value": "そのまま保持"
           }
         },
         "ko": {
@@ -14335,7 +14335,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "準備ができたら [完了] を押してください。プレビューには回復が必要です"
+            "value": "プレビューの復帰が必要です"
           }
         },
         "ko": {
@@ -14400,7 +14400,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ロック領域に放します"
+            "value": "放して領域を確定"
           }
         },
         "ko": {
@@ -14595,7 +14595,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "現在の結果を保存します"
+            "value": "現在の結果を保存中"
           }
         },
         "ko": {
@@ -14725,7 +14725,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "着実に下にスクロールします"
+            "value": "一定の速度で下にスクロール"
           }
         },
         "ko": {
@@ -14920,7 +14920,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Snapzy はステッチ結果を封印しています"
+            "value": "Snapzy がステッチ結果を確定しています"
           }
         },
         "ko": {
@@ -15180,7 +15180,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "もう一度試してください 完了"
+            "value": "もう一度「完了」を押してください"
           }
         },
         "ko": {
@@ -16480,7 +16480,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "スクロール キャプチャ セッションはすでにアクティブです。"
+            "value": "スクロールキャプチャセッションはすでにアクティブです。"
           }
         },
         "ko": {
@@ -16675,7 +16675,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "選択エリアのオーバーレイを表示"
+            "value": "選択領域のオーバーレイを表示"
           }
         },
         "ko": {
@@ -16740,7 +16740,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "キャプチャ中に選択エリア外の背景を暗くします"
+            "value": "キャプチャ中に選択領域外の背景を暗くします"
           }
         },
         "ko": {

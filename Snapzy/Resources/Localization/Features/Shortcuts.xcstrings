@@ -161,7 +161,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "注釈エディターでツールを切り替えるための単一キーのショートカット。"
+            "value": "注釈エディタでツールを切り替えるための単一キーのショートカット。"
           }
         },
         "ko": {
@@ -226,7 +226,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "範囲キャプチャのオーバーレイ内"
+            "value": "単一キー（A）は「領域キャプチャ」と連動します。修飾キーの組み合わせ（⇧⌘A）は\n独立して動作します。"
           }
         },
         "ko": {
@@ -681,7 +681,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "キャプチャする領域を選択してください"
+            "value": "領域を選択してキャプチャ"
           }
         },
         "ko": {
@@ -811,7 +811,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "キャプチャ ショートカット"
+            "value": "キャプチャショートカット"
           }
         },
         "ko": {
@@ -1136,7 +1136,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "どのアプリからでも、キーボード ショートカットを使用してスクリーンショットや録音をキャプチャすることはできません。キャプチャ機能を使用するには、Snapzy を手動で開く必要があります。"
+            "value": "どのアプリからでも、キーボードショートカットでスクリーンショットや録画を行えなくなります。キャプチャ機能を使用するには、Snapzy を手動で開く必要があります。"
           }
         },
         "ko": {
@@ -1591,7 +1591,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "グローバル ショートカット"
+            "value": "グローバルショートカット"
           }
         },
         "ko": {
@@ -1656,7 +1656,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "キーボード ショートカットを使用して、どこからでもキャプチャできます。"
+            "value": "キーボードショートカットを使用して、どこからでもキャプチャできます。"
           }
         },
         "ko": {
@@ -2176,7 +2176,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "動画編集ツールを開く"
+            "value": "ビデオ編集ツールを開く"
           }
         },
         "ko": {
@@ -2241,7 +2241,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "クイック アクセス"
+            "value": "クイックアクセス"
           }
         },
         "ko": {
@@ -2371,7 +2371,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "画面収録を開始"
+            "value": "画面録画を開始"
           }
         },
         "ko": {
@@ -2436,7 +2436,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ショートカットボタンをクリックして新しいキーを記録します。行のトグルでショートカットをオフにできます。Esc でキャンセルします。"
+            "value": "ショートカットボタンをクリックして新しいキーを記録します。記録中に Backspace / Delete を押すとキーを消去できます。行のトグルでショートカットをオフにできます。Esc でキャンセルします。"
           }
         },
         "ko": {
@@ -2889,7 +2889,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "クリックして記録します。記録中に Backspace を押すか、行のトグルでショートカットをオフにできます。Esc でキャンセルします。"
+            "value": "クリックして記録します。記録中に Backspace / Delete を押すとキーを消去できます。行のトグルでショートカットをオフにできます。Esc でキャンセルします。"
           }
         },
         "ko": {
@@ -2960,7 +2960,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ウィンドウ、メニュー、ボタンなどの特定のUI要素を選択する"
+            "value": "アクセシブルな UI 要素をリアルタイムでハイライトし、クリックしてキャプチャします"
           }
         },
         "ko": {
@@ -3344,7 +3344,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "アクションに注釈を付ける"
+            "value": "注釈アクション"
           }
         },
         "ko": {
@@ -3409,7 +3409,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "参照に注釈を付ける"
+            "value": "注釈のリファレンス"
           }
         },
         "ko": {
@@ -3474,7 +3474,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ツール キーに注釈を付ける"
+            "value": "注釈ツールのキー"
           }
         },
         "ko": {
@@ -3929,7 +3929,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "トリミングを確認"
+            "value": "切り抜きを確定"
           }
         },
         "ko": {
@@ -4189,7 +4189,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "注釈エディターの内部"
+            "value": "注釈エディタの内部"
           }
         },
         "ko": {
@@ -4319,7 +4319,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "注釈をナッジする"
+            "value": "注釈を微調整"
           }
         },
         "ko": {
@@ -4384,7 +4384,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "録音のみ"
+            "value": "録画のみ"
           }
         },
         "ko": {
@@ -4969,7 +4969,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "キーボード ショートカット"
+            "value": "キーボードショートカット"
           }
         },
         "ko": {
@@ -5034,7 +5034,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "トグルピン"
+            "value": "固定の切り替え"
           }
         },
         "ko": {
@@ -5359,7 +5359,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ によって使用されます"
+            "value": "%@ が使用中"
           }
         },
         "ko": {
@@ -5554,7 +5554,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ に一致します。 macOSが勝つかもしれない。"
+            "value": "%@ に一致します。macOS が優先される場合があります。"
           }
         },
         "ko": {
@@ -5879,7 +5879,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "macOS スクリーンショットと記録オプション"
+            "value": "macOS スクリーンショットと録画のオプション"
           }
         },
         "ko": {
@@ -5944,7 +5944,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "描画ツールバーとオーバーレイを切り替えます。オプション。"
+            "value": "描画ツールバーとオーバーレイを切り替えます（任意）"
           }
         },
         "ko": {
@@ -6009,7 +6009,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "最初から再録画します。オプション。"
+            "value": "最初から録り直します（任意）"
           }
         },
         "ko": {
@@ -6074,7 +6074,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "アクティブな録画を削除してキャンセルします。オプション。"
+            "value": "アクティブな録画を削除してキャンセルします（任意）"
           }
         },
         "ko": {
@@ -6139,7 +6139,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "アクティブな録画を一時停止または再開します。オプション。推奨：⌘⇧Space。"
+            "value": "アクティブな録画を一時停止または再開します（任意）。推奨: ⌘⇧Space"
           }
         },
         "ko": {

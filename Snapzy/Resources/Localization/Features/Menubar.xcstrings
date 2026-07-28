@@ -31,7 +31,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "アップデートをチェックしてください..."
+            "value" : "アップデートを確認..."
           }
         },
         "ko" : {
@@ -161,7 +161,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "許可を与えます..."
+            "value" : "権限を付与..."
           }
         },
         "ko" : {
@@ -226,7 +226,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "キーボード ショートカット"
+            "value" : "キーボードショートカット"
           }
         },
         "ko" : {
@@ -356,7 +356,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "スナジーをやめる"
+            "value" : "Snapzy を終了"
           }
         },
         "ko" : {
@@ -421,7 +421,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "録画画面"
+            "value" : "画面を録画"
           }
         },
         "ko" : {
@@ -486,7 +486,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "記録を停止 (%@)"
+            "value" : "録画を停止 (%@)"
           }
         },
         "ko" : {
