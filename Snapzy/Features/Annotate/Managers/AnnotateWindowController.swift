@@ -48,6 +48,16 @@ final class AnnotateWindowController: NSWindowController, NSWindowDelegate {
   /// Captured on first open, reused across saves for session caching.
   private var originalImageData: Data?
 
+  /// Apply the configured startup tool (Settings > Annotate) and persist explicit
+  /// tool choices when "Remember Last Tool" is enabled — same behavior as the
+  /// inline area-annotate overlay.
+  private func applyStartupToolPreference() {
+    state.selectedTool = AnnotateToolPreference.initialTool()
+    state.onToolActivated = { tool in
+      AnnotateToolPreference.remember(tool)
+    }
+  }
+
   init(item: QuickAccessItem, sessionData: AnnotationSessionData? = nil) {
     self.quickAccessItemId = item.id
     self.sourceFileAccess = fileAccessManager.beginAccessingURL(item.url)
@@ -111,6 +121,7 @@ final class AnnotateWindowController: NSWindowController, NSWindowDelegate {
 
     window.delegate = self
     window.interactionState = state
+    applyStartupToolPreference()
     setupContent()
     setupKeyboardShortcutObservers()
     setupSourceURLObservation()
@@ -144,6 +155,7 @@ final class AnnotateWindowController: NSWindowController, NSWindowDelegate {
 
     window.delegate = self
     window.interactionState = state
+    applyStartupToolPreference()
     setupContent()
     setupKeyboardShortcutObservers()
     setupSourceURLObservation()
@@ -218,6 +230,7 @@ final class AnnotateWindowController: NSWindowController, NSWindowDelegate {
 
     window.delegate = self
     window.interactionState = state
+    applyStartupToolPreference()
     setupContent()
     setupKeyboardShortcutObservers()
     setupSourceURLObservation()
