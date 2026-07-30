@@ -52,6 +52,7 @@ final class HotkeyUnregistrationTests: XCTestCase {
 
   @MainActor
   func testDisablingShortcutFreesCarbonRegistration() throws {
+    try skipIfRunningInCI("Carbon hotkey registration is unsupported on headless CI runners")
     let manager = KeyboardShortcutManager.shared
 
     let originalConfig = manager.shortcut(for: .fullscreen)
@@ -98,6 +99,7 @@ final class HotkeyUnregistrationTests: XCTestCase {
 
   @MainActor
   func testDisabledComboCanBeReassignedToAnotherKind() throws {
+    try skipIfRunningInCI("Carbon hotkey registration is unsupported on headless CI runners")
     let manager = KeyboardShortcutManager.shared
 
     let originalFullscreen = manager.shortcut(for: .fullscreen)
