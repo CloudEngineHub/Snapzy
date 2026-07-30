@@ -112,6 +112,7 @@ flowchart TD
 - The frozen/manual and application-window paths both preserve existing desktop icon/widget exclusion, cursor, own-app exclusion, temp-save, Quick Access, clipboard, and annotate routing behavior.
 - When own-app exclusion hides visible normal Snapzy windows for screenshot, OCR, cutout, scrolling capture, or pre-recording setup, those windows are ordered out temporarily (`HiddenWindowSession`) and restored after the capture/session finishes or is cancelled.
 - Capture toasts, alerts, open-panel prompts, and error surfaces are localized through `L10n`.
+- Known limitation: under macOS Accessibility Zoom (fullscreen style), screenshots capture the logical (unzoomed or top-left-anchored, version-dependent) display rather than the magnified on-screen view — no public API exposes the zoom pan offset. See "Known Limitations" in [`RECORDING.md`](RECORDING.md) (issue #423).
 
 ### Selection overlay architecture
 

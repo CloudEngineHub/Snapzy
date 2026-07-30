@@ -110,6 +110,10 @@ Overlay setup happens after `startRecording()` succeeds; region overlay borders 
 
 The pre-record toolbar has a camera button (`RecordingToolbarView` → `RecordingCoordinator.captureScreenshot()`): hides toolbar + overlays, captures the selected rect via `ScreenCaptureManager.captureArea` (or `captureWindow` in application mode) through the normal screenshot save/post-capture pipeline, then closes the recording session.
 
+## Known Limitations
+
+- **macOS Accessibility Zoom (fullscreen style) is not reflected in recordings or screenshots** (issue #423, upstream platform limitation). Fullscreen zoom is applied in the WindowServer scanout stage; ScreenCaptureKit sources pixels from the logical desktop composition, and behavior differs by macOS version — macOS 15 streams zoom-scale content anchored at the display's top-left origin (pan offset dropped), while macOS 26 returns the unzoomed logical screen (verified 26.5.2 for `SCScreenshotManager`, `SCStream` + `sourceRect`, and `CGDisplayCreateImage`). No public API exposes the zoom pan offset, so captured output cannot match the magnified on-screen view. All capture geometry assumes image origin == display logical origin (`ScreenRecordingManager.resolveCaptureGeometry`, `ScreenCaptureManager.reconciledPixelCrop`). Workaround for users: avoid fullscreen zoom while capturing, or use the picture-in-picture zoom style.
+
 ## Key Files
 
 | File | Responsibility |
