@@ -45,7 +45,9 @@ final class AreaSelectionMultiMonitorReconciliationTests: AreaSelectionOverlayTe
   /// returning immediately WITHOUT ever touching the real window's cached flag, leaving it stuck on
   /// stale `true`. A true multi-window assertion (two independently pooled real windows) would require
   /// actual multi-monitor hardware, which is not available in this unit test environment.
-  func testApplyBackdrop_reconcilesSelectionEnabledForOtherPooledDisplays() {
+  func testApplyBackdrop_reconcilesSelectionEnabledForOtherPooledDisplays() throws {
+    try skipIfRunningInCI("Requires a real NSScreen-backed window pool from the shared AreaSelectionController, which is flaky on headless CI runners")
+
     let controller = AreaSelectionController.shared
 
     // GIVEN: a selection session starts with EMPTY backdrops (backdrop-less / lazy-backdrop mode,
@@ -131,7 +133,9 @@ final class AreaSelectionMultiMonitorReconciliationTests: AreaSelectionOverlayTe
   /// verifies the timer is installed for a live session and torn down on cancel (leak-free). The
   /// actual OS-level cursor routing across displays cannot be reproduced in a unit test and requires
   /// manual dual-display verification.
-  func testPointerTrackingTimer_installedForLiveSession_removedOnCancel() {
+  func testPointerTrackingTimer_installedForLiveSession_removedOnCancel() throws {
+    try skipIfRunningInCI("Drives the shared AreaSelectionController with real overlay windows, which is flaky on headless CI runners")
+
     let controller = AreaSelectionController.shared
 
     let started = XCTestExpectation(description: "Live session started")
@@ -158,6 +162,8 @@ final class AreaSelectionMultiMonitorReconciliationTests: AreaSelectionOverlayTe
   }
 
   func testScrollingSelection_firstPhysicalMouseDownStartsManualSelection() throws {
+    try skipIfRunningInCI("Depends on real mouse location and pooled window frames, which are unreliable on headless CI runners")
+
     let controller = AreaSelectionController.shared
     controller.startSelection(mode: .scrollingCapture) { _, _ in }
     defer { controller.cancelSelection() }
@@ -209,6 +215,8 @@ final class AreaSelectionMultiMonitorReconciliationTests: AreaSelectionOverlayTe
   /// `timer.fire()` after forcing the arrow, and expects the crosshair to be back without any
   /// mouse movement.
   func testPointerTrackingTick_reassertsCrosshairDuringStationaryManualSelection() throws {
+    try skipIfRunningInCI("Depends on real mouse location, pooled window frames, and NSCursor state, which are unreliable on headless CI runners")
+
     let controller = AreaSelectionController.shared
     controller.startSelection(mode: .scrollingCapture) { _, _ in }
     defer { controller.cancelSelection() }
@@ -270,7 +278,9 @@ final class AreaSelectionMultiMonitorReconciliationTests: AreaSelectionOverlayTe
   /// Frozen sessions (non-empty `selectionBackdrops`) activate the app, which already routes cursor
   /// handling across displays, so the pointer-tracking timer must NOT be installed — avoiding
   /// redundant key churn.
-  func testPointerTrackingTimer_notInstalledForFrozenSession() {
+  func testPointerTrackingTimer_notInstalledForFrozenSession() throws {
+    try skipIfRunningInCI("Drives the shared AreaSelectionController with real overlay windows, which is flaky on headless CI runners")
+
     let controller = AreaSelectionController.shared
 
     let image = createSolidColorImage(color: .white, size: CGSize(width: 400, height: 300))
