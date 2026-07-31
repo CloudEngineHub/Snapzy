@@ -14,6 +14,7 @@ struct ShortcutRecorderView: View {
   let label: String
   let icon: String
   let description: String
+  let footnote: String?
   @Binding var shortcut: ShortcutConfig?
   let defaultShortcut: ShortcutConfig?
   let isEnabled: Binding<Bool>?
@@ -28,6 +29,7 @@ struct ShortcutRecorderView: View {
     label: String,
     icon: String = "command",
     description: String = "",
+    footnote: String? = nil,
     shortcut: Binding<ShortcutConfig?>,
     defaultShortcut: ShortcutConfig? = nil,
     isEnabled: Binding<Bool>? = nil,
@@ -37,6 +39,7 @@ struct ShortcutRecorderView: View {
     self.label = label
     self.icon = icon
     self.description = description
+    self.footnote = footnote
     self._shortcut = shortcut
     self.defaultShortcut = defaultShortcut
     self.isEnabled = isEnabled
@@ -57,6 +60,11 @@ struct ShortcutRecorderView: View {
         if !description.isEmpty {
           Text(description)
             .font(.caption)
+            .foregroundColor(.secondary)
+        }
+        if let footnote {
+          Text(footnote)
+            .font(.caption2)
             .foregroundColor(.secondary)
         }
       }

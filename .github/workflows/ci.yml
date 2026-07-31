@@ -63,6 +63,7 @@ jobs:
             SnapzyTests/BackgroundCursorControlTests
             SnapzyTests/LivePassthroughInputLogicTests
             SnapzyTests/HotkeyUnregistrationTests
+            SnapzyTests/RecordingSessionHotkeyRegistrationTests
         run: |
           set -euo pipefail
           mkdir -p build

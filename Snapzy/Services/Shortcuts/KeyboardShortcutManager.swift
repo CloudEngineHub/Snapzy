@@ -7,6 +7,7 @@
 
 import AppKit
 import Carbon.HIToolbox
+import Combine
 
 /// Represents a keyboard shortcut configuration
 struct ShortcutConfig: Equatable, Codable {
@@ -598,6 +599,27 @@ final class KeyboardShortcutManager {
   private var disabledShortcuts: Set<GlobalShortcutKind> = []
   private var clearedShortcuts: Set<GlobalShortcutKind> = []
   private var temporarySuspensionCount: Int = 0
+  private var cancellables = Set<AnyCancellable>()
+
+  /// Global shortcut kinds that only apply during an active recording session.
+  /// They hold their global registration only while a recording session is active
+  /// so their key combos stay available to other apps the rest of the time.
+  private static let recordingSessionKinds: Set<GlobalShortcutKind> = [
+    .pauseResumeRecording,
+    .togglePenRecording,
+    .restartRecording,
+    .deleteRecording,
+  ]
+
+  /// Recording-session activity source. Production reads the live recorder;
+  /// tests can substitute a stub to exercise session gating deterministically.
+  var isRecordingSessionActive: () -> Bool = { ScreenRecordingManager.shared.isActive }
+
+  /// Whether a binding for `kind` should hold a global registration right now.
+  /// Session-scoped kinds register only while a recording session is active.
+  func shouldRegisterNow(for kind: GlobalShortcutKind) -> Bool {
+    !Self.recordingSessionKinds.contains(kind) || isRecordingSessionActive()
+  }
 
   private var fullscreenHotkeyRef: EventHotKeyRef?
   private var areaHotkeyRef: EventHotKeyRef?
@@ -622,7 +644,7 @@ final class KeyboardShortcutManager {
 
   /// Fn-containing bindings can't be expressed via Carbon `RegisterEventHotKey`;
   /// they are dispatched through key event monitors instead.
-  private var fnBindings: [(id: UInt32, config: ShortcutConfig)] = []
+  private(set) var fnBindings: [(id: UInt32, config: ShortcutConfig)] = []
   private var fnGlobalMonitor: Any?
   private var fnLocalMonitor: Any?
 
@@ -697,6 +719,7 @@ final class KeyboardShortcutManager {
     loadClearedShortcuts()
     seedDefaultClearedShortcutsOnFirstLaunchIfNeeded()
     setupEventHandler()
+    observeRecordingSessionState()
 
     // Auto-enable if previously enabled
     if UserDefaults.standard.bool(forKey: shortcutsEnabledKey) {
@@ -752,6 +775,21 @@ final class KeyboardShortcutManager {
     }
 
     updateFnMonitors()
+  }
+
+  /// Re-register shortcuts when a recording session starts or ends so
+  /// session-scoped kinds only hold their global hotkeys while a session is
+  /// active. `state` is only mutated on the main actor, so the sink fires
+  /// synchronously on main and registration stays in lockstep with the session.
+  private func observeRecordingSessionState() {
+    ScreenRecordingManager.shared.$state
+      .map { $0 != .idle }
+      .removeDuplicates()
+      .dropFirst()
+      .sink { [weak self] _ in
+        self?.refreshShortcutRegistration()
+      }
+      .store(in: &cancellables)
   }
 
   /// Exposed for the shortcuts settings UI: true when at least one enabled binding
@@ -1481,6 +1519,35 @@ final class KeyboardShortcutManager {
       hotkeyID: historyHotkeyID,
       ref: &historyHotkeyRef
     )
+
+    logRegistrationAudit()
+  }
+
+  /// One-line audit of the effective binding table: for every kind, the resolved
+  /// combo plus its current disposition (registered / fn-monitor / session-gated /
+  /// disabled / cleared / skipped).
+  private func logRegistrationAudit() {
+    let sessionActive = isRecordingSessionActive()
+    let entries = GlobalShortcutKind.allCases.map { kind -> String in
+      guard isShortcutEnabled(for: kind) else { return "\(kind.rawValue)=disabled" }
+      guard let config = shortcut(for: kind) else { return "\(kind.rawValue)=cleared" }
+      let combo = config.displayString
+      if !shouldRegisterNow(for: kind) {
+        return "\(kind.rawValue)=\(combo)[session-gated]"
+      }
+      if config.modifiers & ShortcutConfig.functionCarbonModifier != 0 {
+        return "\(kind.rawValue)=\(combo)[fn-monitor]"
+      }
+      guard config.modifiers != 0 else {
+        return "\(kind.rawValue)=\(combo)[skipped:no-modifier]"
+      }
+      return "\(kind.rawValue)=\(combo)[registered]"
+    }
+    DiagnosticLogger.shared.log(
+      .info,
+      .action,
+      "Shortcut registration audit (session \(sessionActive ? "active" : "idle")): \(entries.joined(separator: ", "))"
+    )
   }
 
   private func registerShortcutIfNeeded(
@@ -1490,6 +1557,11 @@ final class KeyboardShortcutManager {
     ref: inout EventHotKeyRef?
   ) {
     guard isShortcutEnabled(for: kind), let config else { return }
+
+    // Recording-session kinds register only while a session is active; outside a
+    // session the combo stays free for other apps. Gated before the Fn-diversion
+    // so idle session Fn-bindings stay out of fnBindings too.
+    guard shouldRegisterNow(for: kind) else { return }
 
     // Carbon cannot express the Fn modifier. Fn bindings are dispatched through
     // key event monitors (see updateFnMonitors) instead of RegisterEventHotKey,
@@ -1520,6 +1592,12 @@ final class KeyboardShortcutManager {
       ref = nil
       return
     }
+
+    DiagnosticLogger.shared.log(
+      .info,
+      .action,
+      "Registered shortcut \(kind.rawValue): \(config.displayString)"
+    )
   }
 
   private func registerOverlayShortcutIfNeeded(
@@ -1558,6 +1636,12 @@ final class KeyboardShortcutManager {
       ref = nil
       return
     }
+
+    DiagnosticLogger.shared.log(
+      .info,
+      .action,
+      "Registered shortcut \(label): \(config.displayString)"
+    )
   }
 
   // MARK: - Fn Shortcut Dispatch

@@ -27,6 +27,7 @@ flowchart TD
 - Delegate: `KeyboardShortcutDelegate.shortcutTriggered(ShortcutAction)` — implemented by `ScreenCaptureViewModel` (`Snapzy/Features/Capture/CaptureViewModel.swift`).
 - Global enable: `shortcutsEnabled` UserDefaults flag; `enable()` / `disable()` re-register everything. Restored at init if previously enabled.
 - Temporary suspension: `beginTemporaryShortcutSuppression()` / `endTemporaryShortcutSuppression()` — refcounted, unregisters hotkeys without touching the persisted enabled flag (used while recording shortcut input).
+- Recording-session gating: the four recording-session kinds (`pauseResumeRecording`, `togglePenRecording`, `restartRecording`, `deleteRecording`) hold a global registration **only while a recording session is active** (`ScreenRecordingManager.shared.isActive`). The manager observes `ScreenRecordingManager.shared.$state` and re-registers when `isActive` toggles (`shouldRegisterNow(for:)`), so those combos stay free for other apps while Snapzy is idle; Fn-based session bindings likewise stay out of `fnBindings` while idle. `recording` itself is **not** gated — it starts recordings and must stay global.
 - Per-shortcut disable set: `shortcuts.disabledGlobalActions` (`PreferencesKeys.disabledGlobalShortcuts`).
 - Cleared/unbound set: `shortcuts.clearedGlobalActions` (`PreferencesKeys.clearedGlobalShortcuts`) — `shortcut(for:)` returns `nil` for cleared kinds.
 

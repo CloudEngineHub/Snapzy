@@ -3186,6 +3186,11 @@ nonisolated enum L10n {
       defaultValue: "Delete active recording and cancel. Optional.",
       comment: "Description for the optional delete/cancel recording shortcut"
     )
+    static let activeOnlyWhileRecording = string(
+      "preferences-shortcuts.active-only-while-recording",
+      defaultValue: "Active only while recording",
+      comment: "Footnote for recording-session shortcuts that only hold a global hotkey during an active recording"
+    )
     static let toolsSection = string(
       "preferences-shortcuts.tools-section",
       defaultValue: "Tools Shortcuts",
