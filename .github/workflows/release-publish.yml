@@ -523,7 +523,8 @@ jobs:
             echo "DMG signed successfully"
             echo "Signature: $SIGNATURE"
           else
-            echo "::warning::DMG signature is empty — appcast will have no EdDSA signature"
+            echo "::error::DMG signature is empty — refusing to publish. The app sets SUPublicEDKey, so an appcast item without an EdDSA signature would be rejected by all clients."
+            exit 1
           fi
 
       - name: Convert changelog to HTML for appcast
@@ -590,6 +591,10 @@ jobs:
         run: |
           set -euo pipefail
           DMG_PATH="${dmg_path:?dmg_path is not set}"
+          if [ -z "$ED_SIGNATURE" ]; then
+            echo "::error::ED_SIGNATURE is empty — refusing to publish. The app sets SUPublicEDKey, so an appcast item without an EdDSA signature would be rejected by all clients."
+            exit 1
+          fi
           RELEASE_NOTES_HTML="$(cat "$RELEASE_NOTES_PATH")"
           chmod +x scripts/update-appcast.sh
           ./scripts/update-appcast.sh \
