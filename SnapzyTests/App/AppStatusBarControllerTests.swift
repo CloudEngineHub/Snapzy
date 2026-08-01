@@ -113,4 +113,103 @@ final class AppStatusBarControllerTests: XCTestCase {
     // 5. Cleanup window to prevent leakage
     closingWindow.close()
   }
+
+  // MARK: - Settings menu item lookup (issue #311)
+
+  private func makeMainMenu(appMenuItems: [NSMenuItem], extraMenus: [NSMenu] = []) -> NSMenu {
+    let mainMenu = NSMenu()
+    let appMenuItem = NSMenuItem()
+    let appMenu = NSMenu()
+    for item in appMenuItems {
+      appMenu.addItem(item)
+    }
+    appMenuItem.submenu = appMenu
+    mainMenu.addItem(appMenuItem)
+    for menu in extraMenus {
+      let item = NSMenuItem()
+      item.submenu = menu
+      mainMenu.addItem(item)
+    }
+    return mainMenu
+  }
+
+  private func makeMenuItem(title: String, action: String?, keyEquivalent: String) -> NSMenuItem {
+    let item = NSMenuItem(
+      title: title,
+      action: action.map { Selector(($0)) },
+      keyEquivalent: keyEquivalent
+    )
+    item.keyEquivalentModifierMask = .command
+    return item
+  }
+
+  func testFindSettingsMenuItem_matchesStandardActionSelectors() {
+    for actionName in ["showSettingsWindow:", "showPreferencesWindow:"] {
+      let settingsItem = makeMenuItem(title: "Settings…", action: actionName, keyEquivalent: "")
+      let menu = makeMainMenu(appMenuItems: [
+        makeMenuItem(title: "About Snapzy", action: nil, keyEquivalent: ""),
+        settingsItem,
+        makeMenuItem(title: "Quit Snapzy", action: "terminate:", keyEquivalent: "q"),
+      ])
+
+      XCTAssertTrue(
+        AppStatusBarController.findSettingsMenuItem(in: menu, shortcutCharacter: ",") === settingsItem,
+        "expected match for action \(actionName)"
+      )
+    }
+  }
+
+  func testFindSettingsMenuItem_matchesCommaKeyEquivalentOnUSLayout() {
+    // The SwiftUI Settings scene item uses a private action (menuAction:),
+    // so it is identified by its Cmd+, shortcut.
+    let settingsItem = makeMenuItem(title: "Settings…", action: "menuAction:", keyEquivalent: ",")
+    let menu = makeMainMenu(appMenuItems: [
+      makeMenuItem(title: "About Snapzy", action: nil, keyEquivalent: ""),
+      settingsItem,
+      makeMenuItem(title: "Quit Snapzy", action: "terminate:", keyEquivalent: "q"),
+    ])
+
+    XCTAssertTrue(
+      AppStatusBarController.findSettingsMenuItem(in: menu, shortcutCharacter: ",") === settingsItem
+    )
+  }
+
+  func testFindSettingsMenuItem_matchesMirroredKeyEquivalentOnTurkishLayout() {
+    // AppKit mirrors the Settings key equivalent to the physical comma key's
+    // character on the active layout ("ö" on Turkish Q) - the root cause of
+    // the simulated Cmd+, event no longer matching (issue #311).
+    let settingsItem = makeMenuItem(title: "Settings…", action: "menuAction:", keyEquivalent: "ö")
+    let menu = makeMainMenu(appMenuItems: [
+      makeMenuItem(title: "About Snapzy", action: nil, keyEquivalent: ""),
+      settingsItem,
+      makeMenuItem(title: "Quit Snapzy", action: "terminate:", keyEquivalent: "q"),
+    ])
+
+    XCTAssertTrue(
+      AppStatusBarController.findSettingsMenuItem(in: menu, shortcutCharacter: "ö") === settingsItem
+    )
+  }
+
+  func testFindSettingsMenuItem_ignoresCommaShortcutOutsideAppMenu() {
+    // The shortcut match is scoped to the application menu so unrelated
+    // Cmd+, items elsewhere in the menu bar are never triggered.
+    let commaItem = makeMenuItem(title: "Custom Command", action: "menuAction:", keyEquivalent: ",")
+    let fileMenu = NSMenu(title: "File")
+    fileMenu.addItem(commaItem)
+    let menu = makeMainMenu(
+      appMenuItems: [makeMenuItem(title: "About Snapzy", action: nil, keyEquivalent: "")],
+      extraMenus: [fileMenu]
+    )
+
+    XCTAssertNil(AppStatusBarController.findSettingsMenuItem(in: menu, shortcutCharacter: ","))
+  }
+
+  func testFindSettingsMenuItem_returnsNilWhenNoSettingsItemExists() {
+    let menu = makeMainMenu(appMenuItems: [
+      makeMenuItem(title: "About Snapzy", action: nil, keyEquivalent: ""),
+      makeMenuItem(title: "Quit Snapzy", action: "terminate:", keyEquivalent: "q"),
+    ])
+
+    XCTAssertNil(AppStatusBarController.findSettingsMenuItem(in: menu, shortcutCharacter: "ö"))
+  }
 }

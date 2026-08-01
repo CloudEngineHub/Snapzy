@@ -6,6 +6,7 @@
 //
 
 import AppKit
+import Carbon
 import Combine
 import Sparkle
 import SwiftUI
@@ -893,27 +894,121 @@ final class AppStatusBarController: ObservableObject {
 
     NSApp.activate(ignoringOtherApps: true)
 
-    // Trigger Settings scene - equivalent to SettingsLink behavior
+    // Trigger Settings scene - equivalent to SettingsLink behavior.
+    // Simulating Cmd+, fails on layouts where AppKit mirrors the Settings item's
+    // key equivalent to the physical comma key's character (e.g. "ö" on Turkish
+    // layouts, issue #311), so find and perform the menu item directly instead.
     if #available(macOS 14.0, *) {
-      if let keyEvent = NSEvent.keyEvent(
-        with: .keyDown,
-        location: .zero,
-        modifierFlags: .command,
-        timestamp: 0,
-        windowNumber: 0,
-        context: nil,
-        characters: ",",
-        charactersIgnoringModifiers: ",",
-        isARepeat: false,
-        keyCode: 43
-      ) {
-        NSApp.mainMenu?.performKeyEquivalent(with: keyEvent)
-      }
+      attemptToTriggerSettings(remainingAttempts: Self.settingsTriggerMaxAttempts)
     } else {
       NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
     }
 
     schedulePreferencesWindowTracking(excludingWindowNumbers: existingWindowNumbers)
+  }
+
+  // MARK: - Settings Scene Trigger
+
+  /// The app menu can lag behind the activation policy transition, so the
+  /// Settings menu item lookup retries a few times before falling back.
+  private static let settingsTriggerMaxAttempts = 5
+  private static let settingsTriggerRetryDelay: TimeInterval = 0.1
+
+  /// Physical key that macOS binds to the "Settings…" app menu item.
+  private static let settingsShortcutKeyCode = UInt16(kVK_ANSI_Comma)
+
+  private func attemptToTriggerSettings(remainingAttempts: Int) {
+    if let mainMenu = NSApp.mainMenu,
+       let settingsItem = Self.findSettingsMenuItem(
+         in: mainMenu,
+         shortcutCharacter: Self.settingsShortcutCharacter()
+       ),
+       let parentMenu = settingsItem.menu,
+       let itemIndex = parentMenu.items.firstIndex(of: settingsItem) {
+      parentMenu.performActionForItem(at: itemIndex)
+      return
+    }
+
+    if remainingAttempts > 1 {
+      DispatchQueue.main.asyncAfter(deadline: .now() + Self.settingsTriggerRetryDelay) { [weak self] in
+        self?.attemptToTriggerSettings(remainingAttempts: remainingAttempts - 1)
+      }
+    } else {
+      DiagnosticLogger.shared.log(
+        .warning,
+        .preferences,
+        "Settings menu item not found; falling back to responder-chain action"
+      )
+      NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+    }
+  }
+
+  /// Finds the "Settings…" menu item created by the SwiftUI `Settings` scene.
+  ///
+  /// The scene item uses a private action (`menuAction:`), so when no standard
+  /// action selector matches, it is identified by its shortcut: Command plus
+  /// the character the physical comma key produces on the active keyboard
+  /// layout. AppKit mirrors the item's key equivalent to that character
+  /// ("," on U.S., "ö" on Turkish Q), which is why matching must be
+  /// layout-aware (issue #311). The shortcut match is scoped to the
+  /// application menu to avoid colliding with unrelated items.
+  static func findSettingsMenuItem(in mainMenu: NSMenu, shortcutCharacter: String) -> NSMenuItem? {
+    if let actionMatch = findMenuItem(in: mainMenu, where: { item in
+      item.action == Selector(("showSettingsWindow:"))
+        || item.action == Selector(("showPreferencesWindow:"))
+    }) {
+      return actionMatch
+    }
+
+    guard let appMenu = mainMenu.items.first?.submenu else { return nil }
+    return appMenu.items.first { item in
+      item.keyEquivalentModifierMask.contains(.command)
+        && !item.keyEquivalent.isEmpty
+        && (item.keyEquivalent == shortcutCharacter || item.keyEquivalent == ",")
+    }
+  }
+
+  private static func findMenuItem(in menu: NSMenu, where predicate: (NSMenuItem) -> Bool) -> NSMenuItem? {
+    for item in menu.items {
+      if predicate(item) { return item }
+      if let submenu = item.submenu, let found = findMenuItem(in: submenu, where: predicate) {
+        return found
+      }
+    }
+    return nil
+  }
+
+  /// Character produced by the physical comma key on the active keyboard
+  /// layout; falls back to "," when the layout cannot be translated.
+  private static func settingsShortcutCharacter() -> String {
+    guard let inputSource = TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue(),
+          let layoutDataRef = TISGetInputSourceProperty(inputSource, kTISPropertyUnicodeKeyLayoutData)
+    else { return "," }
+
+    let layoutData = Unmanaged<CFData>.fromOpaque(layoutDataRef).takeUnretainedValue() as Data
+    let translated = layoutData.withUnsafeBytes { buffer -> String? in
+      guard let baseAddress = buffer.baseAddress else { return nil }
+      let keyboardLayout = UnsafePointer<UCKeyboardLayout>(OpaquePointer(baseAddress))
+      var deadKeyState: UInt32 = 0
+      var chars = [UniChar](repeating: 0, count: 4)
+      var length = 0
+      let status = UCKeyTranslate(
+        keyboardLayout,
+        settingsShortcutKeyCode,
+        UInt16(kUCKeyActionDown),
+        0,
+        UInt32(LMGetKbdType()),
+        OptionBits(kUCKeyTranslateNoDeadKeysBit),
+        &deadKeyState,
+        chars.count,
+        &length,
+        &chars
+      )
+      guard status == noErr, length > 0 else { return nil }
+      return String(utf16CodeUnits: chars, count: length)
+    }
+
+    return translated ?? ","
   }
 
   @objc private func windowDidClose(_ notification: Notification) {
