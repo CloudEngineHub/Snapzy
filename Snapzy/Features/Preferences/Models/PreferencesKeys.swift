@@ -85,6 +85,10 @@ enum PreferencesKeys {
   static let annotateFavoriteColors = "annotate.favoriteColors.v1"
   static let ocrSuccessNotificationEnabled = "ocr.successNotificationEnabled"
   static let ocrLinkDetectionEnabled = "ocr.linkDetectionEnabled"
+  static let ocrSelectedModel = "ocr.selectedModel"
+  static let ocrInstalledModels = "ocr.installedModels"
+  static let ocrCustomModels = "ocr.customModels"
+  static let ocrUserCatalogModels = "ocr.userCatalogModels"
 
   // Floating Screenshot (Quick Access)
   static let floatingEnabled = "floatingScreenshot.enabled"

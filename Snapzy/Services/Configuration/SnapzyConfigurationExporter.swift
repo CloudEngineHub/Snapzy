@@ -85,6 +85,9 @@ enum SnapzyConfigurationExporter {
 
     writer.section("capture.ocr")
     writer.value("success_notification", defaults.boolValue(PreferencesKeys.ocrSuccessNotificationEnabled, default: true))
+    writer.value("selected_model", defaults.string(forKey: PreferencesKeys.ocrSelectedModel) ?? OCRModelSelection.builtIn.persistedValue)
+    writer.value("custom_models", customModelsJSON(defaults: defaults))
+    writer.value("catalog_models", catalogModelsJSON(defaults: defaults))
 
     writer.section("capture.object_cutout")
     writer.value("auto_crop", defaults.boolValue(PreferencesKeys.backgroundCutoutAutoCropEnabled, default: true))
@@ -233,6 +236,41 @@ enum SnapzyConfigurationExporter {
     writer.value("quick_access", manager.isActionEnabled(.showQuickAccess, for: type))
     writer.value("copy_file", manager.isActionEnabled(.copyFile, for: type))
     writer.value("open_annotate", manager.isActionEnabled(.openAnnotate, for: type))
+  }
+
+  /// Deterministic JSON of the stored custom OCR endpoints for TOML export.
+  /// API keys are never exported — they never leave the Keychain.
+  private static func customModelsJSON(defaults: UserDefaults) -> String {
+    guard let data = defaults.data(forKey: PreferencesKeys.ocrCustomModels),
+          let models = try? JSONDecoder().decode([CustomOCRModel].self, from: data) else {
+      return "[]"
+    }
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.sortedKeys]
+    guard let encoded = try? encoder.encode(models),
+          let json = String(data: encoded, encoding: .utf8) else {
+      return "[]"
+    }
+    return json
+  }
+
+  /// Strict manifest document for user-defined downloadable models. Installed
+  /// binaries and machine-local install state are intentionally excluded.
+  private static func catalogModelsJSON(defaults: UserDefaults) -> String {
+    let models: [OCRModelManifest]
+    if let data = defaults.data(forKey: PreferencesKeys.ocrUserCatalogModels),
+       let decoded = try? OCRUserCatalogStore.decodePersistedData(
+         data,
+         reservedModelIDs: OCRModelCatalog.bundledModelIDs
+       ) {
+      models = decoded
+    } else {
+      models = []
+    }
+    guard let encoded = try? OCRCatalogManifestCodec.encode(.catalog(models), format: .json) else {
+      return "{\"format\":\"snapzy-ocr-catalog\",\"models\":[],\"schema_version\":1}"
+    }
+    return String(decoding: encoded, as: UTF8.self)
   }
 
   private static func storedMouseColor(defaults: UserDefaults) -> NSColor {

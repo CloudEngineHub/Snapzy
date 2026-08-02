@@ -68,6 +68,12 @@ enum SnapzyConfigurationDefaultDocument {
 
     writer.section("capture.ocr")
     writer.value("success_notification", true)
+    writer.value("selected_model", OCRModelSelection.builtIn.persistedValue)
+    writer.value("custom_models", "[]")
+    writer.value(
+      "catalog_models",
+      "{\"format\":\"snapzy-ocr-catalog\",\"models\":[],\"schema_version\":1}"
+    )
 
     writer.section("capture.object_cutout")
     writer.value("auto_crop", true)
