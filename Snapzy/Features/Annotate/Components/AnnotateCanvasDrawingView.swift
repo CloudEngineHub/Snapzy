@@ -634,6 +634,10 @@ final class DrawingCanvasNSView: NSView {
         gestureLastResizeBounds = nil
         gestureLastPoint = nil
         gestureDidMutate = false
+        // Re-render static layers once so the resized item is excluded from
+        // their backing stores before the live (dragged) layer takes over —
+        // otherwise the pre-gesture bitmap lingers and ghosts during resize.
+        invalidateDrawing()
         return
       }
     }
