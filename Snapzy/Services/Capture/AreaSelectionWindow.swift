@@ -128,6 +128,15 @@ final class AreaSelectionController: NSObject {
   private var sessionAppActivationObserver: Any?
   private var sessionAppSwitchObserver: Any?
   private var lumaRecapturingTask: Task<Void, Never>?
+  /// Bounded per-session watchdog that re-verifies pooled windows are actually presenting
+  /// (see `scheduleSessionPresentationWatchdog`). `orderFrontRegardless()` is best-effort —
+  /// WindowServer can silently refuse it or leave a stale frame/space/occlusion state that
+  /// still reports `isVisible == true` while compositing nothing. In live-passthrough
+  /// sessions the event tap keeps selection fully functional, so such a session looks
+  /// alive but paints nothing (no crosshair, no selection rect). The one-shot `isVisible`
+  /// assertion this replaces could neither detect nor heal those states.
+  private var sessionPresentationWatchdogTimer: Timer?
+  private var sessionPresentationWatchdogTicks = 0
   private var isMovingManualSelection = false
   private var manualSelectionLastPointerLocation: CGPoint?
 
@@ -636,41 +645,95 @@ final class AreaSelectionController: NSObject {
       }
     }
 
-    scheduleSessionWindowsVisibilityAssertion()
+    scheduleSessionPresentationWatchdog()
   }
 
-  /// One-shot post-activation assertion (next run-loop turn). `orderFrontRegardless()` is
-  /// best-effort: WindowServer can silently refuse it (fullscreen-space transitions, transient
-  /// ordering loss). A session whose panels never become visible looks alive to the user while
-  /// clicks fall through to the apps underneath — re-assert ordering once and log evidence so
-  /// field reports can be diagnosed from the diagnostic log bundle.
-  private func scheduleSessionWindowsVisibilityAssertion() {
+  /// Bounded presentation watchdog: checks once on the next run-loop turn, then every 0.5s
+  /// for the first ~3s of the session. `orderFrontRegardless()` is best-effort: WindowServer
+  /// can silently refuse it (fullscreen-space transitions, transient ordering loss), leave a
+  /// stale frame after a display reconfiguration, or mark the window occluded — states that
+  /// can still report `isVisible == true` while compositing nothing. A session whose panels
+  /// never present looks alive to the user while (in live-passthrough) the event tap keeps
+  /// selection fully functional — invisible but pixel-correct captures. Each check verifies
+  /// the full presentation state via `AreaSelectionPresentationLogic`, heals what it can
+  /// (frame resync + re-order), and logs the exact failure so field reports can be diagnosed
+  /// from the diagnostic log bundle.
+  private func scheduleSessionPresentationWatchdog() {
+    cancelSessionPresentationWatchdog()
     let sessionID = selectionSessionID
+    sessionPresentationWatchdogTicks = 0
     DispatchQueue.main.async { [weak self] in
       MainActor.assumeIsolated {
-        guard let self, self.isPresenting, self.selectionSessionID == sessionID else { return }
-        for screen in NSScreen.screens {
-          guard let displayID = screen.displayID,
-                let window = self.windowPool[displayID],
-                !window.isVisible else { continue }
-          DiagnosticLogger.shared.log(
-            .warning,
-            .capture,
-            "Area selection window not visible after activation; re-asserting order",
-            context: [
-              "displayID": "\(displayID)",
-              "isOnActiveSpace": "\(window.isOnActiveSpace)",
-              "alphaValue": "\(window.alphaValue)",
-              "appIsActive": "\(NSApp.isActive)",
-              "screenFrame": "\(screen.frame)",
-              "windowFrame": "\(window.frame)",
-            ]
-          )
-          window.orderFrontRegardless()
-          window.activateKeyboardInputIfNeeded()
-          window.overlayView.refreshCursor()
-        }
+        self?.runSessionPresentationCheck(sessionID: sessionID)
       }
+    }
+    let timer = Timer(timeInterval: 0.5, repeats: true) { [weak self] _ in
+      MainActor.assumeIsolated {
+        self?.handleSessionPresentationWatchdogTick(sessionID: sessionID)
+      }
+    }
+    RunLoop.main.add(timer, forMode: .common)
+    sessionPresentationWatchdogTimer = timer
+  }
+
+  private func cancelSessionPresentationWatchdog() {
+    sessionPresentationWatchdogTimer?.invalidate()
+    sessionPresentationWatchdogTimer = nil
+    sessionPresentationWatchdogTicks = 0
+  }
+
+  private func handleSessionPresentationWatchdogTick(sessionID: UUID) {
+    guard isPresenting, selectionSessionID == sessionID else {
+      cancelSessionPresentationWatchdog()
+      return
+    }
+    sessionPresentationWatchdogTicks += 1
+    runSessionPresentationCheck(sessionID: sessionID)
+    if sessionPresentationWatchdogTicks >= 6 {
+      cancelSessionPresentationWatchdog()
+    }
+  }
+
+  /// Verify every pooled window's presentation state; heal and log anomalies. Safe to call
+  /// repeatedly — a clean window is a no-op.
+  private func runSessionPresentationCheck(sessionID: UUID) {
+    guard isPresenting, selectionSessionID == sessionID else { return }
+    for screen in NSScreen.screens {
+      guard let displayID = screen.displayID,
+            let window = windowPool[displayID] else { continue }
+      let state = AreaSelectionPresentationState(
+        isVisible: window.isVisible,
+        isOnActiveSpace: window.isOnActiveSpace,
+        occlusionVisible: window.occlusionState.contains(.visible),
+        alphaValue: window.alphaValue,
+        windowFrame: window.frame,
+        screenFrame: screen.frame
+      )
+      let issues = AreaSelectionPresentationLogic.issues(for: state)
+      guard !issues.isEmpty else { continue }
+      DiagnosticLogger.shared.log(
+        .warning,
+        .capture,
+        "Area selection window presentation anomaly; re-asserting",
+        context: [
+          "issues": issues.map(\.rawValue).joined(separator: ","),
+          "displayID": "\(displayID)",
+          "isVisible": "\(window.isVisible)",
+          "isOnActiveSpace": "\(window.isOnActiveSpace)",
+          "occlusionState": "\(window.occlusionState.rawValue)",
+          "alphaValue": "\(window.alphaValue)",
+          "appIsActive": "\(NSApp.isActive)",
+          "screenFrame": "\(screen.frame)",
+          "windowFrame": "\(window.frame)",
+        ]
+      )
+      if issues.contains(.frameMismatch) {
+        window.setFrame(screen.frame, display: true)
+        window.overlayView.updateBounds(screen.frame)
+      }
+      window.orderFrontRegardless()
+      window.activateKeyboardInputIfNeeded()
+      window.overlayView.refreshCursor()
     }
   }
 
@@ -687,16 +750,16 @@ final class AreaSelectionController: NSObject {
     let targets = captures.map(\.target)
     var remainingVisibleWindowIDs = Set(targets.map(\.windowID))
     retainedPopoverVisibilityRefreshTask = Task { [weak self] in
-      for attempt in 0..<10 {
-        guard let self, self.isPresenting, self.selectionSessionID == sessionID else { return }
+      for attempt in 0 ..< 10 {
+        guard let self, isPresenting, selectionSessionID == sessionID else { return }
         let sampledVisibleWindowIDs = await Task.detached(priority: .utility) {
           WindowSelectionQueryService.visibleWindowIDs(for: targets)
         }.value
-        guard self.isPresenting, self.selectionSessionID == sessionID else { return }
+        guard isPresenting, selectionSessionID == sessionID else { return }
         // Once a source has disappeared, keep its retained image visible for this session even
         // if a later WindowServer sample transiently reports that ID again.
         remainingVisibleWindowIDs.formIntersection(sampledVisibleWindowIDs)
-        for (_, window) in self.windowPool {
+        for (_, window) in windowPool {
           window.overlayView.setRetainedMenuBarPopoverWindowIDsStillOnScreen(remainingVisibleWindowIDs)
         }
         guard !remainingVisibleWindowIDs.isEmpty, attempt < 9 else { return }
@@ -1462,6 +1525,7 @@ final class AreaSelectionController: NSObject {
     dismissesAfterSelection = true
     stopPointerTracking()
     stopLivePassthroughInput()
+    cancelSessionPresentationWatchdog()
     lumaRecapturingTask?.cancel()
     lumaRecapturingTask = nil
     cancelRetainedPopoverVisibilityRefresh()
@@ -2615,19 +2679,19 @@ final class AreaSelectionOverlayView: NSView {
     let sourceWidth = cgImage.width
     let sourceHeight = cgImage.height
     guard sourceWidth > 0, sourceHeight > 0 else {
-      self.backdropWidth = 0
-      self.backdropHeight = 0
-      self.backdropScale = scale
-      self.backdropPixelDataArray = nil
+      backdropWidth = 0
+      backdropHeight = 0
+      backdropScale = scale
+      backdropPixelDataArray = nil
       return
     }
 
     let downscale = min(1, Self.backdropPixelCacheMaxLongEdge / CGFloat(max(sourceWidth, sourceHeight)))
     let width = max(1, Int((CGFloat(sourceWidth) * downscale).rounded()))
     let height = max(1, Int((CGFloat(sourceHeight) * downscale).rounded()))
-    self.backdropWidth = width
-    self.backdropHeight = height
-    self.backdropScale = scale
+    backdropWidth = width
+    backdropHeight = height
+    backdropScale = scale
 
     let colorSpace = CGColorSpaceCreateDeviceRGB()
     guard let context = CGContext(
@@ -2670,8 +2734,8 @@ final class AreaSelectionOverlayView: NSView {
         "sourceWidth": "\(sourceWidth)",
         "sourceHeight": "\(sourceHeight)",
         "scale": "\(scale)",
-        "cachedBytes": "\(self.backdropPixelDataArray?.count ?? 0)",
-        "duration_ms": "\(Date().timeIntervalSince(startedAt) * 1000)"
+        "cachedBytes": "\(backdropPixelDataArray?.count ?? 0)",
+        "duration_ms": "\(Date().timeIntervalSince(startedAt) * 1000)",
       ]
     )
   }
@@ -3466,7 +3530,7 @@ final class AreaSelectionOverlayView: NSView {
     let capturesForDisplay = retainedMenuBarPopoverCaptures.values.filter {
       $0.target.displayID == displayID
     }
-    let captureIDs = Set(capturesForDisplay.map { $0.target.windowID })
+    let captureIDs = Set(capturesForDisplay.map(\.target.windowID))
     for windowID in retainedMenuBarPopoverLayers.keys.filter({ !captureIDs.contains($0) }) {
       retainedMenuBarPopoverLayers[windowID]?.removeFromSuperlayer()
       retainedMenuBarPopoverLayers[windowID] = nil
