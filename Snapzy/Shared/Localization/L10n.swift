@@ -5082,6 +5082,21 @@ nonisolated enum L10n {
       defaultValue: "Snap crop edges to content borders while dragging. Hold ⌘ to temporarily disable.",
       comment: "Settings description for snapping crop edges to content borders"
     )
+    static let highlighterTextSnapping = string(
+      "annotate.highlighter-text-snapping",
+      defaultValue: "Snap Highlight to Text",
+      comment: "Settings title for snapping the highlighter to detected text lines"
+    )
+    static let textSnap = string(
+      "annotate.text-snap",
+      defaultValue: "Snap",
+      comment: "Compact quick-properties label for the highlighter text-snapping toggle"
+    )
+    static let highlighterTextSnappingDescription = string(
+      "annotate.highlighter-text-snapping-description",
+      defaultValue: "Align highlighter strokes to nearby text lines while dragging. Hold ⌘ to temporarily disable.",
+      comment: "Settings description for snapping the highlighter to detected text lines"
+    )
     static let autoCropToContent = string(
       "annotate.auto-crop-to-content",
       defaultValue: "Auto-Crop to Content",

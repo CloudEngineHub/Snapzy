@@ -95,6 +95,9 @@ final class DrawingCanvasNSView: NSView {
   var acceptsInactiveWindowMouse: Bool
   private let shortcutManager = AnnotateShortcutManager.shared
   private var currentPath: [CGPoint] = []
+  /// Text-snapped highlighter bars for the in-progress drag. Empty means the
+  /// gesture stays freehand (no text nearby, snapping off, or ⌘ held).
+  private var snappedHighlightSegments: [AnnotateTextSnapSegment] = []
   private var isDrawing = false
   private var dragStart: CGPoint?
   private var drawingStartDisplayPoint: CGPoint?
@@ -694,6 +697,7 @@ final class DrawingCanvasNSView: NSView {
     switch state.selectedTool {
     case .pencil, .highlighter:
       currentPath = [imagePoint]
+      snappedHighlightSegments = []
     case .text:
       // Only create new text annotation when not already editing one
       // (if we were editing, commitTextEditing() above already handled it)
@@ -901,13 +905,45 @@ final class DrawingCanvasNSView: NSView {
     }
 
     switch state.selectedTool {
-    case .pencil, .highlighter:
+    case .highlighter:
+      currentPath.append(imagePoint)
+      snappedHighlightSegments = resolveHighlightSnap(current: imagePoint, event: event)
+      invalidateLiveLayers()
+    case .pencil:
       currentPath.append(imagePoint)
       invalidateLiveLayers()
     default:
       currentPath = [imagePoint]
       invalidateLiveLayers()
     }
+  }
+
+  /// Resolve the in-progress highlighter drag against the detected text lines.
+  /// Returns an empty array whenever the gesture should stay freehand: snapping
+  /// disabled, ⌘ held (temporary bypass), profile not ready, or no text near
+  /// the drag.
+  private func resolveHighlightSnap(current: CGPoint, event: NSEvent) -> [AnnotateTextSnapSegment] {
+    guard state.isHighlighterTextSnappingEnabled,
+          !event.modifierFlags.contains(.command),
+          let profile = state.textLineProfile,
+          !profile.isEmpty,
+          let start = dragStart else { return [] }
+
+    return AnnotateTextSnapping.resolve(
+      start: start,
+      current: current,
+      path: currentPath,
+      profile: profile,
+      pointerTolerance: pointerToleranceInImagePoints
+    )
+  }
+
+  /// ~8 screen px expressed in image points. The canvas renders one image point
+  /// as `displayScale` view px and the enclosing ZStack applies
+  /// `.scaleEffect(state.zoomLevel)` outside this view, so screen px per image
+  /// point is their product (mirrors the crop snapping tolerance).
+  private var pointerToleranceInImagePoints: CGFloat {
+    8 / max(displayScale * state.zoomLevel, 0.0001)
   }
 
   /// Applies a resize gesture to the gesture-local copy only. Mirrors the
@@ -1096,6 +1132,18 @@ final class DrawingCanvasNSView: NSView {
     let tool = state.selectedTool
     let pathToSave = currentPath
 
+    // Text-snapped highlights commit the snapped bars instead of the raw path,
+    // so the result matches the preview the user released on.
+    if tool == .highlighter {
+      let segments = resolveHighlightSnap(current: imagePoint, event: event)
+      if !segments.isEmpty {
+        createSnappedHighlights(segments)
+        resetDrawingInteraction()
+        invalidateDrawing()
+        return
+      }
+    }
+
     if shouldCommitDrawing(tool: tool, start: start, end: imagePoint, path: pathToSave) {
       // Commit synchronously: deferring to a Task lets a frame render where the
       // stroke preview is already gone but the annotation is not yet appended,
@@ -1204,6 +1252,7 @@ final class DrawingCanvasNSView: NSView {
     drawingStartDisplayPoint = nil
     drawingDragDistance = 0
     currentPath = []
+    snappedHighlightSegments = []
     clearGestureState()
   }
 
@@ -1235,6 +1284,29 @@ final class DrawingCanvasNSView: NSView {
         state.selectedAnnotationId = item.id
       }
     }
+  }
+
+  /// Commit text-snapped highlighter bars. A drag across several lines produces
+  /// one highlight per line but a single undo step, matching how the user
+  /// perceives the gesture.
+  @MainActor
+  private func createSnappedHighlights(_ segments: [AnnotateTextSnapSegment]) {
+    let items = AnnotationFactory.createTextSnappedHighlights(
+      segments: segments,
+      context: AnnotationFactory.CreationContext(
+        properties: state.annotationCreationProperties(for: .highlighter),
+        arrowStyle: state.arrowStyle,
+        blurType: state.blurType,
+        counterValue: 0,
+        watermarkText: state.watermarkText,
+        activeAnnotationBounds: state.activeAnnotationBounds
+      )
+    )
+    guard !items.isEmpty else { return }
+
+    state.saveState()
+    state.annotations.append(contentsOf: items)
+    state.deselectAnnotation()
   }
 
   private func createTextAnnotation(at point: CGPoint) {
@@ -1465,6 +1537,11 @@ final class DrawingCanvasNSView: NSView {
       )
     } else if state.selectedTool == .spotlight {
       // Spotlight preview is handled in the unified overlay pass above.
+    } else if state.selectedTool == .highlighter, !snappedHighlightSegments.isEmpty {
+      renderer.drawSnappedHighlightPreview(
+        segments: snappedHighlightSegments,
+        strokeColor: state.annotationCreationProperties(for: .highlighter).strokeColor
+      )
     } else {
       let previewProperties = state.annotationCreationProperties(for: state.selectedTool)
       renderer.drawCurrentStroke(

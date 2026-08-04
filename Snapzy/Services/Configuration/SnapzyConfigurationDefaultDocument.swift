@@ -174,6 +174,7 @@ enum SnapzyConfigurationDefaultDocument {
     writer.value("quick_properties_sync", true)
     writer.value("combine_save_as_edit", true)
     writer.value("crop_snap_to_edges", true)
+    writer.value("highlighter_text_snapping", true)
   }
 
   private static func writeShortcuts(_ writer: inout SimpleTOMLWriter) {

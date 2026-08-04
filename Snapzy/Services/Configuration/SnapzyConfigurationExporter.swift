@@ -207,6 +207,10 @@ enum SnapzyConfigurationExporter {
     writer.value("quick_properties_sync", AnnotateQuickPropertiesSyncPreference.isEnabled(userDefaults: defaults))
     writer.value("combine_save_as_edit", CombineSaveAsEditPreference.isEnabled(userDefaults: defaults))
     writer.value("crop_snap_to_edges", defaults.boolValue(PreferencesKeys.annotateCropSnapToEdgesEnabled, default: true))
+    writer.value(
+      "highlighter_text_snapping",
+      defaults.boolValue(PreferencesKeys.annotateHighlighterTextSnappingEnabled, default: true)
+    )
   }
 
   private static func language(defaults: UserDefaults) -> String {

@@ -514,6 +514,9 @@ enum SnapzyConfigurationImporter {
     collectBool(&reader, "annotate", "crop_snap_to_edges", mutations: &mutations) {
       defaults.set($0, forKey: PreferencesKeys.annotateCropSnapToEdgesEnabled)
     }
+    collectBool(&reader, "annotate", "highlighter_text_snapping", mutations: &mutations) {
+      defaults.set($0, forKey: PreferencesKeys.annotateHighlighterTextSnappingEnabled)
+    }
   }
 
   /// Imports the custom OCR endpoint list as a whole (replace semantics, like
