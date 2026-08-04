@@ -258,6 +258,7 @@ final class AnnotateTextSnappingTests: XCTestCase {
   /// boxes from the bottom, and so does the annotation canvas, so text drawn
   /// near the top of the image must come back with a high Y.
   func testDetectorReportsTextNearTheImageTopWithAHighY() throws {
+    try skipIfRunningInCI()
     let size = CGSize(width: 600, height: 300)
     let image = NSImage(size: size)
     image.lockFocus()

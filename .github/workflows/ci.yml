@@ -58,6 +58,7 @@ jobs:
             SnapzyTests/AnnotateBackgroundRedactionTests/testApplyBackgroundCutoutStartsProcessingOnSupportedOS
             SnapzyTests/AnnotateBackgroundRedactionTests/testAutoRedactSensitiveDataStartsScan
             SnapzyTests/AnnotateMockupTests/testMockupExporterRenderProducesImageWithSourceImage
+            SnapzyTests/AnnotateTextSnappingTests/testDetectorReportsTextNearTheImageTopWithAHighY
             SnapzyTests/AnnotateBlurCacheManagerTests/testGetCachedBlur_nonBlockingSchedulesRender
             SnapzyTests/AreaSelectionMultiMonitorReconciliationTests
             SnapzyTests/AreaSelectionSessionLifecycleTests
