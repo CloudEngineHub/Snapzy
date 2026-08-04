@@ -29,6 +29,14 @@ enum AreaSelectionPresentationIssue: String, CaseIterable {
   /// WindowServer believes the window is fully covered; layer commits do not
   /// present while occluded.
   case occluded
+  /// The WindowServer's on-screen window list (CGWindowList `.optionOnScreenOnly`) does not
+  /// include the window even though AppKit considers it ordered in — the compositor is
+  /// presenting nothing for this window on the active space. This is the ground-truth check
+  /// every AppKit-side property above can miss: for a `.canJoinAllSpaces` panel
+  /// `isOnActiveSpace` reports true even when the WindowServer dropped the all-spaces
+  /// membership (the field failure where the overlay shows on one desktop Space but not
+  /// another while every other property looks healthy).
+  case notOnScreenPerWindowServer
 }
 
 struct AreaSelectionPresentationState: Equatable {
@@ -38,6 +46,9 @@ struct AreaSelectionPresentationState: Equatable {
   var alphaValue: CGFloat
   var windowFrame: CGRect
   var screenFrame: CGRect
+  /// WindowServer ground truth from CGWindowList `.optionOnScreenOnly`. `nil` means the
+  /// query failed or is not applicable (unknown) and is never treated as an anomaly.
+  var onScreenPerWindowServer: Bool?
 }
 
 enum AreaSelectionPresentationLogic {
@@ -59,6 +70,9 @@ enum AreaSelectionPresentationLogic {
     }
     if !state.occlusionVisible {
       issues.append(.occluded)
+    }
+    if state.onScreenPerWindowServer == false {
+      issues.append(.notOnScreenPerWindowServer)
     }
     return issues
   }

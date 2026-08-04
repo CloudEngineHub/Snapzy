@@ -23,7 +23,8 @@ final class AreaSelectionPresentationLogicTests: XCTestCase {
       occlusionVisible: true,
       alphaValue: 1,
       windowFrame: frame,
-      screenFrame: frame
+      screenFrame: frame,
+      onScreenPerWindowServer: true
     )
   }
 
@@ -67,6 +68,23 @@ final class AreaSelectionPresentationLogicTests: XCTestCase {
     XCTAssertEqual(AreaSelectionPresentationLogic.issues(for: state), [.occluded])
   }
 
+  /// The ground-truth check: the WindowServer's on-screen list does not include the window
+  /// even though every AppKit-side property is healthy (the `.canJoinAllSpaces` membership
+  /// failure where the overlay shows on one desktop Space but not another).
+  func testWindowServerOffScreen_flagged() {
+    var state = cleanState()
+    state.onScreenPerWindowServer = false
+    XCTAssertEqual(AreaSelectionPresentationLogic.issues(for: state), [.notOnScreenPerWindowServer])
+  }
+
+  /// A failed WindowServer query (nil = unknown) must never be treated as an anomaly —
+  /// otherwise a transient CGWindowList failure would trigger heals on healthy windows.
+  func testWindowServerUnknown_notFlagged() {
+    var state = cleanState()
+    state.onScreenPerWindowServer = nil
+    XCTAssertTrue(AreaSelectionPresentationLogic.issues(for: state).isEmpty)
+  }
+
   /// The field failure this watchdog targets: `isVisible == true` while the window paints
   /// nothing. Each non-visible presentation defect must surface even when `isVisible` holds.
   func testInvisibleButFunctionalStates_flaggedDespiteIsVisible() {
@@ -74,6 +92,7 @@ final class AreaSelectionPresentationLogicTests: XCTestCase {
       { (s: inout AreaSelectionPresentationState) in s.windowFrame.origin.x += 5000 },
       { (s: inout AreaSelectionPresentationState) in s.occlusionVisible = false },
       { (s: inout AreaSelectionPresentationState) in s.isOnActiveSpace = false },
+      { (s: inout AreaSelectionPresentationState) in s.onScreenPerWindowServer = false },
     ] {
       var state = cleanState()
       mutate(&state)
@@ -92,6 +111,7 @@ final class AreaSelectionPresentationLogicTests: XCTestCase {
     state.alphaValue = 0.5
     state.occlusionVisible = false
     state.windowFrame.origin.y = 999
+    state.onScreenPerWindowServer = false
     XCTAssertEqual(
       Set(AreaSelectionPresentationLogic.issues(for: state)),
       Set(AreaSelectionPresentationIssue.allCases)
