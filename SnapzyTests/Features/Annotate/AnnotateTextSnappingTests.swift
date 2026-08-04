@@ -341,7 +341,12 @@ final class AnnotateTextSnappingTests: XCTestCase {
       defaults.object(forKey: PreferencesKeys.annotateHighlighterTextSnappingEnabled) as? Bool,
       false
     )
-    XCTAssertFalse(AnnotateState(defaults: defaults).isHighlighterTextSnappingEnabled)
+    // A fresh state over the same defaults reads the persisted value back.
+    // Retain it like every other AnnotateState: deinitializing this MainActor
+    // ObservableObject can crash the test runner (see retainedAnnotateStates).
+    let fresh = AnnotateState(defaults: defaults)
+    Self.retainedAnnotateStates.append(fresh)
+    XCTAssertFalse(fresh.isHighlighterTextSnappingEnabled)
   }
 
   // Keep AnnotateState alive for the test process; XCTest scope cleanup can
