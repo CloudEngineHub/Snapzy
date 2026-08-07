@@ -45,7 +45,7 @@
   <p>
     <a href="https://deepwiki.com/duongductrong/Snapzy"><img alt="Ask DeepWiki" src="https://deepwiki.com/badge.svg" /></a>
     <a href="https://discord.gg/xkWDAuJkZu"><img alt="Join Discord Community" src="https://img.shields.io/badge/Discord-Join%20Community-5865F2?style=flat&amp;logo=discord&amp;logoColor=white" /></a>
-    <a href="https://www.raycast.com/chk/snapzy"><img alt="Raycast Extension" src="https://img.shields.io/badge/Raycast-Extension-FF6363?style=flat&amp;logo=raycast&amp;logoColor=white" /></a>
+    <a href="https://www.raycast.com/chkzz/snapzy"><img alt="Raycast Extension" src="https://img.shields.io/badge/Raycast-Extension-FF6363?style=flat&amp;logo=raycast&amp;logoColor=white" /></a>
     <a href="#featured-on"><img alt="Featured On" src="https://img.shields.io/badge/Featured%20On-Product%20Hunt%20%2B%20Unikorn-111827?style=flat&amp;logo=producthunt&amp;logoColor=white" /></a>
   </p>
   <p>
@@ -157,7 +157,7 @@ Control Snapzy directly from Raycast using the official extension:
 
 ## Automation
 
-Snapzy registers the `snapzy://` URL scheme so launchers and automation tools (such as the [Raycast Extension](https://www.raycast.com/chk/snapzy), Alfred, or custom scripts) can trigger capture actions. This integration can be toggled on or off under **Settings -> Advanced -> URL Scheme integration**.
+Snapzy registers the `snapzy://` URL scheme so launchers and automation tools (such as the [Raycast Extension](https://www.raycast.com/chkzz/snapzy), Alfred, or custom scripts) can trigger capture actions. This integration can be toggled on or off under **Settings -> Advanced -> URL Scheme integration**.
 
 | Action                | URL                               |
 | --------------------- | --------------------------------- |
