@@ -6,6 +6,23 @@
     <description>Snapzy application updates</description>
     <language>en</language>
     <item>
+      <title>Version 1.31.0-beta.15</title>
+      <sparkle:channel>beta</sparkle:channel>
+      <sparkle:version>169</sparkle:version>
+      <sparkle:shortVersionString>1.31.0-beta.15</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <pubDate>Sat, 08 Aug 2026 08:13:34 +0000</pubDate>
+      <description><![CDATA[
+        <style>:root { color-scheme: light dark; } body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 13px; line-height: 1.5; padding: 8px 16px; } h3 { font-size: 14px; margin: 12px 0 6px; } ul { padding-left: 20px; margin: 4px 0; } li { margin: 3px 0; }</style>
+        <h3>🐛 Bug Fixes</h3><ul><li>pin Quick Access panel to capture screen on multi-display setups #467 (1f884f2d)</li></ul>
+      ]]></description>
+      <enclosure
+        url="https://github.com/duongductrong/Snapzy/releases/download/v1.31.0-beta.15/Snapzy-v1.31.0-beta.15.dmg"
+        sparkle:edSignature="GEjpvdAASjCDAO80gQNpukGttUxjsUKiRb+3V6BYaFe96Lfpu+5hyAasFP14BsJ2egmUWLqQQzfE652cP4HTDw=="
+        length="47715863"
+        type="application/octet-stream"/>
+    </item>
+    <item>
       <title>Version 1.31.0-beta.14</title>
       <sparkle:channel>beta</sparkle:channel>
       <sparkle:version>168</sparkle:version>
