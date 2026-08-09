@@ -6,6 +6,23 @@
     <description>Snapzy application updates</description>
     <language>en</language>
     <item>
+      <title>Version 1.31.0-beta.17</title>
+      <sparkle:channel>beta</sparkle:channel>
+      <sparkle:version>171</sparkle:version>
+      <sparkle:shortVersionString>1.31.0-beta.17</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <pubDate>Sun, 09 Aug 2026 10:07:51 +0000</pubDate>
+      <description><![CDATA[
+        <style>:root { color-scheme: light dark; } body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 13px; line-height: 1.5; padding: 8px 16px; } h3 { font-size: 14px; margin: 12px 0 6px; } ul { padding-left: 20px; margin: 4px 0; } li { margin: 3px 0; }</style>
+        <h3>✨ Features</h3><ul><li>Add hover card action shortcuts and vsync hover performance optimizations (d66156fc)</li></ul><h3>🐛 Bug Fixes</h3><ul><li>: round-trip function-key shortcuts through export/import (368f30be)</li><li>: correct TOML string unescape so backslash+n/t round-trips on import (684b8353)</li></ul>
+      ]]></description>
+      <enclosure
+        url="https://github.com/duongductrong/Snapzy/releases/download/v1.31.0-beta.17/Snapzy-v1.31.0-beta.17.dmg"
+        sparkle:edSignature="fCMd5pzDDXGQ3YoQIje6mjZi5+gnlWj1akx69N3ZZ4Q6RI9YeFlajd6qLY0RKqYG9zV0I7O5j+yoFuyAbtOgCQ=="
+        length="47765708"
+        type="application/octet-stream"/>
+    </item>
+    <item>
       <title>Version 1.31.0-beta.16</title>
       <sparkle:channel>beta</sparkle:channel>
       <sparkle:version>170</sparkle:version>
