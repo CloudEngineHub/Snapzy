@@ -44,6 +44,8 @@ struct CaptureSettingsView: View {
   @State private var livePassthroughAccessibilityGranted = AXIsProcessTrusted()
   @AppStorage(PreferencesKeys.screenshotShowSelectionAreaOverlay) private var showSelectionAreaOverlay = true
   @AppStorage(PreferencesKeys.screenshotReverseMagnifierZoomDirection) private var reverseMagnifierZoomDirection = false
+  @AppStorage(PreferencesKeys.screenshotShowMagnifierByDefault) private var showMagnifierByDefault = false
+  @AppStorage(PreferencesKeys.screenshotShowMagnifierColorPanel) private var showMagnifierColorPanel = true
 
   @AppStorage(PreferencesKeys.screenshotFormat) private var screenshotFormat = "png"
   @AppStorage(PreferencesKeys.scrollingCaptureShowHints) private var scrollingCaptureShowHints = true
@@ -186,12 +188,36 @@ struct CaptureSettingsView: View {
 
           Section(L10n.PreferencesCapture.magnifierZoomSection) {
             SettingRow(
+              icon: "magnifyingglass",
+              title: L10n.PreferencesCapture.showMagnifierByDefaultTitle,
+              description: L10n.PreferencesCapture.showMagnifierByDefaultDescription
+            ) {
+              Toggle("", isOn: $showMagnifierByDefault)
+                .labelsHidden()
+                .onChange(of: showMagnifierByDefault) { isOn in
+                  if !isOn {
+                    showMagnifierColorPanel = false
+                  }
+                }
+            }
+
+            SettingRow(
               icon: "arrow.up.and.down",
               title: L10n.PreferencesCapture.reverseMagnifierZoomDirectionTitle,
               description: L10n.PreferencesCapture.reverseMagnifierZoomDirectionDescription
             ) {
               Toggle("", isOn: $reverseMagnifierZoomDirection)
                 .labelsHidden()
+            }
+
+            SettingRow(
+              icon: "eyedropper",
+              title: L10n.PreferencesCapture.showMagnifierColorPanelTitle,
+              description: L10n.PreferencesCapture.showMagnifierColorPanelDescription
+            ) {
+              Toggle("", isOn: $showMagnifierColorPanel)
+                .labelsHidden()
+                .disabled(!showMagnifierByDefault)
             }
           }
         }
