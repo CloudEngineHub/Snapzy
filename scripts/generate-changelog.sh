@@ -3,6 +3,10 @@
 # Usage: ./scripts/generate-changelog.sh [previous_tag]
 # Env: EXCLUDE_PRERELEASE=1 — when no tag argument is given, skip v*-beta* tags
 #      so the range starts at the last stable tag.
+#
+# Release-automation commits (version bumps, appcast/cask sync, release PR
+# merges) are always filtered out of the Chore section — they are pipeline
+# noise, not product changes.
 
 set -euo pipefail
 
@@ -27,7 +31,8 @@ fi
 # Collect commits by category
 FEATURES=$(git log "$RANGE" --pretty=format:"%s (%h)" --grep="^feat" 2>/dev/null | sed 's/^feat[:(]//' | sed 's/^[^)]*): /: /' || true)
 FIXES=$(git log "$RANGE" --pretty=format:"%s (%h)" --grep="^fix" 2>/dev/null | sed 's/^fix[:(]//' | sed 's/^[^)]*): /: /' || true)
-CHORES=$(git log "$RANGE" --pretty=format:"%s (%h)" --grep="^chore\|^refactor\|^perf\|^style\|^ci\|^docs\|^build" 2>/dev/null || true)
+CHORES=$(git log "$RANGE" --pretty=format:"%s (%h)" --grep="^chore\|^refactor\|^perf\|^style\|^ci\|^docs\|^build" 2>/dev/null \
+  | grep -vE '^chore: (bump version to v|release v|update appcast)' || true)
 
 # Collect contributors
 # Prefer GitHub usernames when running in CI with gh CLI available

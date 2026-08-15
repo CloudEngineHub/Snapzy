@@ -131,6 +131,8 @@ Promotion is an ordinary stable release — a full rebuild from master HEAD (the
 4. The publish pipeline runs the full stable path: `prerelease = false`, untagged appcast item, cask + README updated, Discord notify without `[Beta]`.
 5. Verify a beta-channel install is offered `X.Y.Z` (its build number is higher than every beta).
 
+> **Changelog folding:** the stable entry is the single source of truth for the whole beta cycle. `generate-changelog.sh` filters release-automation commits (`chore: bump version …`, `chore: update appcast …`, `chore: release v…`) out of every generated changelog, and `update-changelog.sh` removes the `## [X.Y.Z-beta.N]` sections of the same base version from `CHANGELOG.md` when the stable `X.Y.Z` entry is prepended — beta entries never appear alongside their stable promotion. Beta entries of abandoned lines (different base version) are left untouched.
+
 ### Switching Back from Beta (Downgrade Policy)
 
 Sparkle never offers a lower build than the one installed, so switching the channel back to Stable does **not** downgrade:

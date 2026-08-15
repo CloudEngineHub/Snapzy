@@ -69,6 +69,19 @@ HEADER_END=$(awk '/^## \[/ { print NR; exit }' "$CHANGELOG_FILE")
   fi
 } > "${CHANGELOG_FILE}.tmp"
 
+# When publishing a stable version, remove the prerelease entries of the same
+# base version (e.g. [1.2.3-beta.1] when releasing [1.2.3]): their commits are
+# already folded into the stable entry above, so listing them individually is
+# noise. Beta entries of other (abandoned) base versions are left untouched.
+BASE_VERSION="${VERSION%%-*}"
+if [ "$BASE_VERSION" = "$VERSION" ]; then
+  awk -v base="$BASE_VERSION" '
+    substr($0, 1, 4) == "## [" { skip = (index($0, "## [" base "-") == 1) }
+    !skip { print }
+  ' "${CHANGELOG_FILE}.tmp" | print_without_trailing_blanks > "${CHANGELOG_FILE}.tmp2"
+  mv "${CHANGELOG_FILE}.tmp2" "${CHANGELOG_FILE}.tmp"
+fi
+
 mv "${CHANGELOG_FILE}.tmp" "$CHANGELOG_FILE"
 
 echo "Updated $CHANGELOG_FILE with v${VERSION} entry"
