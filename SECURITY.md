@@ -27,14 +27,32 @@ You should receive an initial acknowledgment within **72 hours**. A fix or mitig
 
 Only the latest release receives security updates. If a critical vulnerability is confirmed, a patch release will be published as soon as possible.
 
-## App Sandbox & Permissions
+## Runtime Hardening & Permissions
 
-Snapzy runs inside the **macOS App Sandbox**. The entitlements it requests and why:
+Snapzy is **not** sandboxed (`ENABLE_APP_SANDBOX = NO`) — it runs with the privileges of the
+user account that launched it. Its protections come from the macOS Hardened Runtime, code
+signing, and notarization rather than from an App Sandbox container:
+
+| Protection | Status |
+| --- | --- |
+| Hardened Runtime | Enabled (`ENABLE_HARDENED_RUNTIME = YES`) |
+| Code signature | Developer ID |
+| Notarization | Notarized and stapled by Apple |
+| Library validation | On — no `com.apple.security.cs.disable-library-validation`, so the process can only load code signed by the same team or by Apple |
+| App Sandbox | **Disabled** |
+
+The practical limits on what Snapzy can reach are therefore macOS TCC permissions (below) and
+normal file-system ownership — not a sandbox container.
+
+### Declared entitlements
+
+`Snapzy/Snapzy.entitlements` declares the following. App Sandbox entitlements are **inert while
+the sandbox is disabled**; they are listed here because they are declared in the file, not
+because they currently grant or restrict anything.
 
 | Entitlement | Purpose |
 | --- | --- |
-| `com.apple.security.app-sandbox` | Sandboxed execution — limits access to system resources |
-| `com.apple.security.network.client` | Outbound network for Sparkle update checks and user-initiated cloud uploads |
+| `com.apple.security.network.client` | Outbound network for Sparkle update checks, user-initiated cloud uploads, and user-configured OCR endpoints |
 | `com.apple.security.network.server` | Local loopback server for Google Drive OAuth authorization redirect |
 | `com.apple.security.files.user-selected.read-write` | Read/write files the user explicitly picks (save dialogs, drag-to-app) |
 | `com.apple.security.device.audio-input` | Microphone access for screen recordings with voice |
@@ -86,7 +104,7 @@ Snapzy has minimal third-party dependencies. The codebase relies primarily on Ap
 
 - Do not hard-code secrets, keys, or tokens in the source code.
 - Do not introduce new entitlements without documenting the reason.
-- Do not disable or weaken the App Sandbox.
+- Do not weaken the Hardened Runtime. In particular, never add `com.apple.security.cs.disable-library-validation` or `com.apple.security.cs.allow-unsigned-executable-memory` to the main app — they would allow unsigned or third-party code to load into a process that holds Screen Recording, Microphone, and Accessibility grants plus Keychain credentials.
 - Follow Apple's [Secure Coding Guide](https://developer.apple.com/library/archive/documentation/Security/Conceptual/SecureCodingGuide/) for any new platform integrations.
 
 ## License

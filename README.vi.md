@@ -71,7 +71,7 @@
 - **Bản địa hóa**: bản địa hóa ứng dụng cho 🇺🇸 English, 🇻🇳 Vietnamese, 🇨🇳 Simplified Chinese, 🇹🇼 Traditional Chinese, 🇪🇸 Spanish, 🇯🇵 Japanese, 🇰🇷 Korean, 🇷🇺 Russian, 🇫🇷 French và 🇩🇪 German, hỗ trợ chọn ngôn ngữ riêng cho từng app theo macOS
 - **Cloud Upload**: quyền riêng tư trước hết với mô hình tự mang storage bằng AWS S3 hoặc Cloudflare R2, không dùng server bên thứ ba, upload thủ công từ Quick Access cho screenshot, video và GIF, hoặc từ Annotate cho screenshot, credential lưu trong macOS Keychain với bảo vệ mật khẩu tùy chọn, import/export credential mã hóa thủ công để thiết lập nhanh trên Mac khác, lịch sử upload, auto-expiration cấu hình được (1–90 ngày hoặc vĩnh viễn), lifecycle rules, hỗ trợ custom domain
 - **Cập nhật & chẩn đoán**: cập nhật trong app qua Sparkle, báo vấn đề kèm gói log chẩn đoán, quản lý cache
-- **Nền tảng**: app thanh menu, giao diện light/dark/system, App Sandbox với bookmark truy cập file an toàn
+- **Nền tảng**: app thanh menu, giao diện light/dark/system, ký Developer ID và notarize với Hardened Runtime bật, security-scoped bookmark cho thư mục người dùng chọn
 
 <a id="install"></a>
 
@@ -267,7 +267,7 @@ Screenshot thực tế có thể thấp hơn corpus này, nhất là khi có emo
 
 ## Bảo mật
 
-Snapzy chạy trong macOS App Sandbox với tập entitlement tối thiểu. Mọi request mạng chỉ phục vụ kiểm tra cập nhật Sparkle và các lần cloud upload do chính người dùng chủ động tới bucket S3/R2 của riêng mình, không có dữ liệu nào được gửi tới server bên thứ ba. Credential cloud được lưu độc quyền trong macOS Keychain, có thể được bảo vệ thêm bằng mật khẩu tùy chọn (băm SHA-256, không bao giờ lưu plaintext), và chỉ có thể chuyển qua luồng export/import mã hóa thủ công được bảo vệ bằng passphrase do người dùng cung cấp. Snapzy không thu thập telemetry.
+Snapzy **không** chạy trong sandbox — app chạy với quyền của tài khoản người dùng. App bật macOS Hardened Runtime, được ký Developer ID và notarize bởi Apple, và chỉ khai báo tập entitlement tối thiểu; library validation luôn bật nên app chỉ nạp được code do Snapzy hoặc Apple ký. Mọi request mạng chỉ phục vụ kiểm tra cập nhật Sparkle và các lần cloud upload do chính người dùng chủ động tới bucket S3/R2 của riêng mình, không có dữ liệu nào được gửi tới server bên thứ ba. Credential cloud được lưu độc quyền trong macOS Keychain, có thể được bảo vệ thêm bằng mật khẩu tùy chọn (băm SHA-256, không bao giờ lưu plaintext), và chỉ có thể chuyển qua luồng export/import mã hóa thủ công được bảo vệ bằng passphrase do người dùng cung cấp. Snapzy không thu thập telemetry.
 
 Để báo cáo lỗ hổng bảo mật, hãy dùng [GitHub Security Advisory](https://github.com/duongductrong/Snapzy/security/advisories/new) hoặc liên hệ riêng với maintainer. Xem [SECURITY.md](SECURITY.md) để biết đầy đủ chi tiết.
 

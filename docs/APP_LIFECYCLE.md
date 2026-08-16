@@ -141,7 +141,8 @@ The Permissions tab reflects unhealthy identity as `grantedButUnavailableDueToAp
 
 `Snapzy/Snapzy.entitlements` (no app-sandbox key — builds are **not** sandboxed):
 
-- `com.apple.security.network.client` — outbound network (cloud uploads, updates, OAuth). No `network.server` entitlement is declared.
+- `com.apple.security.network.client` — outbound network (cloud uploads, updates, OAuth).
+- `com.apple.security.network.server` — local loopback listener for the Google Drive OAuth callback redirect.
 - `com.apple.security.files.user-selected.read-write` — user-picked files/folders.
 - `com.apple.security.device.audio-input` — microphone for recordings.
 - `com.apple.security.temporary-exception.shared-preference.read-only` → `com.apple.symbolichotkeys` — system screenshot shortcut conflict detection (see [SHORTCUTS.md](SHORTCUTS.md)).

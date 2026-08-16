@@ -71,7 +71,7 @@
 - **本地化**：应用已提供 🇺🇸 English、🇻🇳 Vietnamese、🇨🇳 Simplified Chinese、🇹🇼 Traditional Chinese、🇪🇸 Spanish、🇯🇵 Japanese、🇰🇷 Korean、🇷🇺 Russian、🇫🇷 French 和 🇩🇪 German，并支持 macOS 原生按应用选择语言
 - **云上传**：坚持隐私优先的自带存储方案，支持 AWS S3 或 Cloudflare R2，不经过第三方服务器；可从 Quick Access 手动上传截图、视频和 GIF，也可从 Annotate 手动上传截图；凭据存储于 macOS Keychain，可选密码保护；支持手动加密导入/导出凭据，便于在另一台 Mac 上快速配置；同时提供上传历史、可配置自动过期（1–90 天或永久）、生命周期规则和自定义域名支持
 - **更新与诊断**：内置 Sparkle 应用更新、带诊断日志包的问题报告和缓存管理
-- **平台特性**：菜单栏应用、浅色/深色/跟随系统主题，以及带安全文件访问书签的 App Sandbox
+- **平台特性**：菜单栏应用、浅色/深色/跟随系统主题、启用 Hardened Runtime 并经 Developer ID 签名与 Apple 公证，以及针对用户所选文件夹的安全作用域书签
 
 <a id="install"></a>
 
@@ -267,7 +267,7 @@ Snapzy 注册了 `snapzy://` URL scheme，因此 launcher 和自动化工具（�
 
 ## 安全
 
-Snapzy 在 macOS App Sandbox 中运行，仅请求最小必要 entitlement。网络请求仅用于 Sparkle 更新检查，以及用户主动发起到自己 S3/R2 bucket 的云上传，数据不会发送到第三方服务器。云凭据只保存在 macOS Keychain 中，并可额外通过可选密码保护（SHA-256 哈希，绝不以明文存储）；凭据仅能通过用户提供归档口令保护的手动加密导出/导入流程转移。Snapzy 不收集任何遥测数据。
+Snapzy **未** 运行在沙盒中，而是以你的用户账户权限运行。应用启用了 macOS Hardened Runtime，经 Developer ID 签名并通过 Apple 公证，且仅声明最小必要 entitlement；库验证（library validation）始终开启，因此应用只会加载由 Snapzy 或 Apple 签名的代码。网络请求仅用于 Sparkle 更新检查，以及用户主动发起到自己 S3/R2 bucket 的云上传，数据不会发送到第三方服务器。云凭据只保存在 macOS Keychain 中，并可额外通过可选密码保护（SHA-256 哈希，绝不以明文存储）；凭据仅能通过用户提供归档口令保护的手动加密导出/导入流程转移。Snapzy 不收集任何遥测数据。
 
 如果你需要报告安全漏洞，请使用 [GitHub Security Advisory](https://github.com/duongductrong/Snapzy/security/advisories/new) 或私下联系维护者。完整细节见 [SECURITY.md](SECURITY.md)。
 
