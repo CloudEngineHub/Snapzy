@@ -212,6 +212,12 @@ enum CaptureOutputNaming {
 
   private static func format(_ date: Date, style: String) -> String {
     let formatter = DateFormatter()
+    // Pin only the calendar so date tokens always resolve to Gregorian values
+    // regardless of the user's system calendar. Without this, users on a
+    // Buddhist calendar (e.g. Thai `th_TH`) get the Buddhist year (e.g. 2569)
+    // instead of the Gregorian year (e.g. 2026) in filenames. The locale is
+    // left alone so `{monthName}`/`{monthShort}` stay localized.
+    formatter.calendar = Calendar(identifier: .gregorian)
     formatter.dateFormat = style
     return formatter.string(from: date)
   }
