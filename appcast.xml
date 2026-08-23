@@ -6,6 +6,23 @@
     <description>Snapzy application updates</description>
     <language>en</language>
     <item>
+      <title>Version 1.32.0-beta.4</title>
+      <sparkle:channel>beta</sparkle:channel>
+      <sparkle:version>177</sparkle:version>
+      <sparkle:shortVersionString>1.32.0-beta.4</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <pubDate>Sun, 23 Aug 2026 07:54:20 +0000</pubDate>
+      <description><![CDATA[
+        <style>:root { color-scheme: light dark; } body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 13px; line-height: 1.5; padding: 8px 16px; } h3 { font-size: 14px; margin: 12px 0 6px; } ul { padding-left: 20px; margin: 4px 0; } li { margin: 3px 0; }</style>
+        <h3>🐛 Bug Fixes</h3><ul><li>Fixed render canvas shadow in screenshot exports (4fa04df8)</li><li>keep space-to-move selection locked to the pointer (cd39ebee)</li></ul>
+      ]]></description>
+      <enclosure
+        url="https://github.com/duongductrong/Snapzy/releases/download/v1.32.0-beta.4/Snapzy-v1.32.0-beta.4.dmg"
+        sparkle:edSignature="ghjBdLe9TTk+MdMWFOybNwQABZ0cDigb4Ztb4jWRH634P5nJDtkZelzLZZS9kdCFwBb4SCiomhFQz3SYfvW1CQ=="
+        length="47846957"
+        type="application/octet-stream"/>
+    </item>
+    <item>
       <title>Version 1.32.0-beta.3</title>
       <sparkle:channel>beta</sparkle:channel>
       <sparkle:version>176</sparkle:version>
