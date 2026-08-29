@@ -69,6 +69,16 @@ final class InlineAreaAnnotateSession: ObservableObject {
   /// read this instead of gesture-only state, or it freezes at the drag-start point.
   @Published var selectionPointerLocation: CGPoint?
   @Published var isMoveModifierActive = false
+  /// The window currently under the cursor while "automatically detect window under cursor"
+  /// is on (see `autoDetectWindowUnderCursor`) — mirrors plain area screenshot's
+  /// `hoveredWindowCandidate`, but shared at the session level since any of the per-display
+  /// views may need to render the highlight for a window on another display.
+  @Published var hoveredWindowCandidate: WindowSelectionCandidate?
+  /// The AX element under the cursor (`SmartElementQueryService`), in AppKit global screen
+  /// coordinates — same space as `hoveredWindowCandidate.target.frame`. When present it takes
+  /// priority over the whole-window highlight, mirroring plain area screenshot's
+  /// `hoveredSmartElementRect`. Arrives asynchronously — see `subscribeToSmartElementHighlights`.
+  @Published var hoveredSmartElementRect: CGRect?
 
   let state: AnnotateState
   let desktopFrame: CGRect
@@ -91,6 +101,11 @@ final class InlineAreaAnnotateSession: ObservableObject {
   private var selectionStartPoint: CGPoint?
   private var stateChangeCancellable: AnyCancellable?
   private var didComplete = false
+  /// Populated asynchronously in `init` (see `startWindowSelectionQuery`) — nil until the
+  /// query resolves, so hover hit-testing simply has nothing to match until then.
+  private var windowSelectionSnapshot: WindowSelectionSnapshot?
+  private var windowSelectionTask: Task<Void, Never>?
+  private var smartElementCancellable: AnyCancellable?
   /// The system cursor is hidden for the whole `.selecting` phase — `InlineAreaAnnotateWindow`
   /// draws the crosshair itself (the same image/positioning as plain area screenshot's
   /// `cursorProxyLayer`) instead of relying on a native `NSCursor.set()`, which this
@@ -112,6 +127,8 @@ final class InlineAreaAnnotateSession: ObservableObject {
     outputFormat: ImageFormat,
     defaults: UserDefaults = .standard,
     context: CaptureContext = .empty,
+    prefetchedContentTask: ShareableContentPrefetchTask? = nil,
+    excludeOwnApplication: Bool = false,
     onComplete: @escaping (CaptureResult) -> Void
   ) {
     self.primaryDisplayID = primaryDisplayID
@@ -141,6 +158,103 @@ final class InlineAreaAnnotateSession: ObservableObject {
     // Session always starts in `.selecting` — hide the real cursor for every display up
     // front; `beginAnnotating(with:)` shows it again once selection ends.
     cursorHider.hide(displayIDs: Set(displays.map(\.displayID)))
+    startWindowSelectionQuery(prefetchedContentTask: prefetchedContentTask, excludeOwnApplication: excludeOwnApplication)
+    if autoDetectElementUnderCursor {
+      SmartElementQueryService.shared.ensureAccessibilityPermission()
+    }
+    subscribeToSmartElementHighlights()
+  }
+
+  deinit {
+    windowSelectionTask?.cancel()
+    SmartElementQueryService.shared.cancelPendingQueries()
+  }
+
+  private func subscribeToSmartElementHighlights() {
+    smartElementCancellable = SmartElementQueryService.shared.elementDetectedPublisher
+      .receive(on: DispatchQueue.main)
+      .sink { [weak self] rect in
+        guard let self, autoDetectElementUnderCursor, phase == .selecting else { return }
+        hoveredSmartElementRect = rect
+      }
+  }
+
+  /// The "automatically detect window under cursor" preference (see
+  /// `PreferencesCaptureSettingsView`) — shares its key with plain area screenshot capture so
+  /// both entry points behave identically.
+  var autoDetectWindowUnderCursor: Bool {
+    defaults.object(forKey: PreferencesKeys.screenshotAutoDetectWindowUnderCursor) as? Bool ?? false
+  }
+
+  /// The "also detect specific elements" preference, layered on top of the window-level one —
+  /// only meaningful (and only exposed as enabled in Preferences) once that one is also on.
+  var autoDetectElementUnderCursor: Bool {
+    autoDetectWindowUnderCursor
+      && (defaults.object(forKey: PreferencesKeys.screenshotAutoDetectElementUnderCursor) as? Bool ?? false)
+  }
+
+  /// Kicks off the same window enumeration plain area screenshot uses for its "A" toggle mode
+  /// (`WindowSelectionQueryService`), reusing the shareable-content prefetch already started
+  /// for the frozen backdrop capture rather than issuing a second query. Only worth doing when
+  /// the preference is on — window enumeration briefly activates the Screen Recording prompt
+  /// path on first use, which shouldn't happen for users who never enabled this.
+  private func startWindowSelectionQuery(
+    prefetchedContentTask: ShareableContentPrefetchTask?,
+    excludeOwnApplication: Bool
+  ) {
+    guard autoDetectWindowUnderCursor else { return }
+    windowSelectionTask = Task { [weak self] in
+      let snapshot = await WindowSelectionQueryService.prepareSnapshot(
+        prefetchedContentTask: prefetchedContentTask,
+        excludeOwnApplication: excludeOwnApplication
+      )
+      guard !Task.isCancelled else { return }
+      self?.windowSelectionSnapshot = snapshot
+    }
+  }
+
+  /// Hit-tests the hovered window at a real screen point, mirroring plain area screenshot's
+  /// `updateWindowHover`. `point` is in the same coordinate space as `WindowCaptureTarget.frame`
+  /// (AppKit global screen coordinates, bottom-left origin).
+  func updateHoveredWindow(atScreenPoint point: CGPoint) {
+    guard autoDetectWindowUnderCursor else {
+      hoveredWindowCandidate = nil
+      return
+    }
+    hoveredWindowCandidate = windowSelectionSnapshot?.hitTest(at: point)
+    // Also layers in element-level detection (a button, a popup, an element inside a browser
+    // page) on top of the whole-window highlight, when that's separately turned on — the
+    // result arrives later via `subscribeToSmartElementHighlights` and updates
+    // `hoveredSmartElementRect` once it does.
+    guard autoDetectElementUnderCursor else { return }
+    // `updateLocation(_:pid:)`, not `updateMouseLocation(pid:)`: the latter internally
+    // re-reads `CGEvent(source: nil)?.location`, which can go stale if anything else is
+    // consuming mouse-moved events system-wide — `point` above is already a live, correct
+    // position, just in AppKit's bottom-left origin instead of the top-left origin
+    // `CGEvent.location` uses.
+    let mainScreenHeight = NSScreen.screens.first(where: { $0.displayID == CGMainDisplayID() })?.frame.height
+      ?? CGDisplayBounds(CGMainDisplayID()).height
+    let quartzPoint = CGPoint(x: point.x, y: mainScreenHeight - point.y)
+    SmartElementQueryService.shared.updateLocation(quartzPoint, pid: hoveredWindowCandidate?.target.ownerPID)
+  }
+
+  /// Crops the backdrop to the selected window and jumps straight to `.annotating`, the same
+  /// end state a manual drag reaches via `endSelection(at:)`.
+  func selectWindow(_ candidate: WindowSelectionCandidate) {
+    guard phase == .selecting else { return }
+    hoveredWindowCandidate = nil
+    hoveredSmartElementRect = nil
+    beginAnnotating(with: Self.localFrame(for: candidate.target.frame, in: desktopFrame))
+  }
+
+  /// Crops the backdrop to the detected AX element rect and jumps straight to `.annotating` —
+  /// same idea as `selectWindow(_:)`, but for the finer-grained element-level highlight.
+  /// `screenRect` is in the same coordinate space as `WindowCaptureTarget.frame`.
+  func selectElement(atScreenRect screenRect: CGRect) {
+    guard phase == .selecting else { return }
+    hoveredWindowCandidate = nil
+    hoveredSmartElementRect = nil
+    beginAnnotating(with: Self.localFrame(for: screenRect, in: desktopFrame))
   }
 
   func attach(window: NSWindow) {

@@ -44,6 +44,8 @@ struct CaptureSettingsView: View {
   @State private var livePassthroughAccessibilityGranted = AXIsProcessTrusted()
   @AppStorage(PreferencesKeys.screenshotShowSelectionAreaOverlay) private var showSelectionAreaOverlay = true
   @AppStorage(PreferencesKeys.screenshotReverseMagnifierZoomDirection) private var reverseMagnifierZoomDirection = false
+  @AppStorage(PreferencesKeys.screenshotAutoDetectWindowUnderCursor) private var autoDetectWindowUnderCursor = false
+  @AppStorage(PreferencesKeys.screenshotAutoDetectElementUnderCursor) private var autoDetectElementUnderCursor = false
   @AppStorage(PreferencesKeys.screenshotShowMagnifierByDefault) private var showMagnifierByDefault = false
   @AppStorage(PreferencesKeys.screenshotShowMagnifierColorPanel) private var showMagnifierColorPanel = true
 
@@ -183,6 +185,30 @@ struct CaptureSettingsView: View {
             ) {
               Toggle("", isOn: $showSelectionAreaOverlay)
                 .labelsHidden()
+            }
+
+            SettingRow(
+              icon: "viewfinder",
+              title: L10n.PreferencesCapture.autoDetectWindowUnderCursorTitle,
+              description: L10n.PreferencesCapture.autoDetectWindowUnderCursorDescription
+            ) {
+              Toggle("", isOn: $autoDetectWindowUnderCursor)
+                .labelsHidden()
+                .onChange(of: autoDetectWindowUnderCursor) { isOn in
+                  if !isOn {
+                    autoDetectElementUnderCursor = false
+                  }
+                }
+            }
+
+            SettingRow(
+              icon: "viewfinder.circle",
+              title: L10n.PreferencesCapture.autoDetectElementUnderCursorTitle,
+              description: L10n.PreferencesCapture.autoDetectElementUnderCursorDescription
+            ) {
+              Toggle("", isOn: $autoDetectElementUnderCursor)
+                .labelsHidden()
+                .disabled(!autoDetectWindowUnderCursor)
             }
           }
 

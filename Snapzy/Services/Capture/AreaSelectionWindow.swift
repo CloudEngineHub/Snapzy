@@ -7,6 +7,7 @@
 //
 
 import AppKit
+import Combine
 import Foundation
 import QuartzCore
 
@@ -1764,15 +1765,34 @@ final class AreaSelectionController: NSObject {
       revealLivePassthroughDimIfNeeded()
       switch interactionMode {
       case .manualRegion:
-        // Same path the global drag monitors use: global coordinates, works across displays.
-        updateManualSelection(to: screenPoint)
+        if manualSelectionStartPoint != nil {
+          // Already a committed drag — same path the global drag monitors use: global
+          // coordinates, works across displays.
+          updateManualSelection(to: screenPoint)
+        } else {
+          // No drag committed yet: with window/element auto-detection on, `mouseDown` may
+          // have parked this as a pending click (`pendingWindowDetectionStartPoint`) instead
+          // of starting a selection, so `manualSelectionStartPoint` is still nil and
+          // `updateManualSelection` would silently no-op. Route to the source overlay, which
+          // tracks that pending state and promotes it to a real drag once the pointer clears
+          // the click/drag threshold.
+          window(containing: screenPoint)?.overlayView.handleLivePassthroughMouseDragged(atScreenPoint: screenPoint)
+        }
       case .applicationWindow:
         window(containing: screenPoint)?.overlayView.handleLivePassthroughMouseDragged(atScreenPoint: screenPoint)
       }
     case .leftMouseUp:
       switch interactionMode {
       case .manualRegion:
-        endManualSelection(at: screenPoint)
+        if manualSelectionStartPoint != nil {
+          endManualSelection(at: screenPoint)
+        } else {
+          // Mirrors the `leftMouseDragged` case above: no drag ever committed, so resolve the
+          // release as a click on whatever the source overlay was hovering (a window, or with
+          // element detection on, a finer AX element) instead of letting `endManualSelection`
+          // no-op the release into nothing.
+          window(containing: screenPoint)?.overlayView.handleLivePassthroughMouseUp(atScreenPoint: screenPoint)
+        }
       case .applicationWindow:
         window(containing: screenPoint)?.overlayView.handleLivePassthroughMouseUp(atScreenPoint: screenPoint)
       }
@@ -1782,6 +1802,16 @@ final class AreaSelectionController: NSObject {
       break
     }
   }
+
+  #if DEBUG
+    /// Test-only mirror of `eventTapDidReceiveButton`, for exercising `handleLivePassthroughButton`'s
+    /// dispatch without a real (Accessibility-gated) event tap running — forces
+    /// `isLivePassthroughInputActive` on for the call.
+    func testHandleLivePassthroughButton(_ kind: CaptureButtonEvent, at screenPoint: CGPoint) {
+      isLivePassthroughInputActive = true
+      handleLivePassthroughButton(kind, at: screenPoint)
+    }
+  #endif
 
   /// Route a consumed key. Esc cancels via the same teardown funnel as right-click.
   /// Arrows/Return stay no-ops: the legacy overlay has no nudge/confirm key handling
@@ -2559,9 +2589,28 @@ final class AreaSelectionOverlayView: NSView {
   private var hasVisibleSelectionRect = false
   private var hasManualSelectionContentOnScreen = false
   private var pendingSelectionStartPoint: CGPoint?
+  /// "Show window under cursor automatically" preference (see `PreferencesCaptureSettingsView`):
+  /// while on, hovering in manual-region mode previews whatever window is under the cursor —
+  /// the ⇧A toggle to `.applicationWindow` mode is no longer needed to see it.
+  private var autoDetectWindowUnderCursor = false
+  /// "Also detect specific elements" preference — layered on top of the one above, only
+  /// meaningful (and only exposed as enabled in Preferences) once that one is also on.
+  private var autoDetectElementUnderCursor = false
+  /// Set on mouseDown in manual-region mode when the press landed on a hovered window and
+  /// auto-detection is on — the gesture hasn't yet been classified as a click (select the
+  /// window) or a drag (fall through to manual region selection). Cleared by whichever happens.
+  private var pendingWindowDetectionStartPoint: CGPoint?
+  private let windowDetectionDragThreshold: CGFloat = 4.0
   private var currentMousePosition: CGPoint = .zero
   private var windowSelectionSnapshot: WindowSelectionSnapshot?
   private var hoveredWindowCandidate: WindowSelectionCandidate?
+  /// The AX element under the cursor (`SmartElementQueryService`), in AppKit global screen
+  /// coordinates — same space as `hoveredWindowCandidate.target.frame`. When present it takes
+  /// priority over the whole-window highlight, since it's a finer-grained target (a button, a
+  /// popup, an element inside a browser page, etc.) within whatever window is hovered. Arrives
+  /// asynchronously via `smartElementCancellable` — see `updateWindowHover`.
+  private var hoveredSmartElementRect: CGRect?
+  private var smartElementCancellable: AnyCancellable?
   private var retainedMenuBarPopoverCaptures: [CGWindowID: ImmediateMenuBarPopoverCapture] = [:]
   private var retainedMenuBarPopoverWindowIDsStillOnScreen = Set<CGWindowID>()
 
@@ -2657,6 +2706,7 @@ final class AreaSelectionOverlayView: NSView {
     setupLayers()
     setupTrackingArea()
     configureAccessibilityInvisibility()
+    subscribeToSmartElementHighlights()
   }
 
   required init?(coder: NSCoder) {
@@ -2665,6 +2715,22 @@ final class AreaSelectionOverlayView: NSView {
     setupLayers()
     setupTrackingArea()
     configureAccessibilityInvisibility()
+    subscribeToSmartElementHighlights()
+  }
+
+  /// One subscription per (pooled, reused) view to the shared AX-element publisher. Every
+  /// pooled view across every display receives every emission — each just renders it against
+  /// its own `bounds`, which naturally shows nothing on displays the point isn't over (see
+  /// `updateApplicationSelectionLayers`), the same way multiple `NSScreen`s all see the same
+  /// `NSEvent.mouseLocation`.
+  private func subscribeToSmartElementHighlights() {
+    smartElementCancellable = SmartElementQueryService.shared.elementDetectedPublisher
+      .receive(on: DispatchQueue.main)
+      .sink { [weak self] rect in
+        guard let self, isAutoElementDetectionActive, interactionMode == .manualRegion, !isSelecting else { return }
+        hoveredSmartElementRect = rect
+        updateApplicationSelectionLayers()
+      }
   }
 
   private func configureAccessibilityInvisibility() {
@@ -2927,6 +2993,19 @@ final class AreaSelectionOverlayView: NSView {
       .object(forKey: PreferencesKeys.screenshotShowSelectionAreaOverlay) as? Bool ?? true
     magnifier.reverseZoomDirection = UserDefaults.standard
       .object(forKey: PreferencesKeys.screenshotReverseMagnifierZoomDirection) as? Bool ?? false
+    autoDetectWindowUnderCursor = UserDefaults.standard
+      .object(forKey: PreferencesKeys.screenshotAutoDetectWindowUnderCursor) as? Bool ?? false
+    autoDetectElementUnderCursor = UserDefaults.standard
+      .object(forKey: PreferencesKeys.screenshotAutoDetectElementUnderCursor) as? Bool ?? false
+    pendingWindowDetectionStartPoint = nil
+    // Drop any rect left over from a previous session/hover — this pooled view is about to be
+    // reused, and a stale finer-grained highlight must not flash before the first real hover.
+    hoveredSmartElementRect = nil
+    if isAutoElementDetectionActive {
+      SmartElementQueryService.shared.ensureAccessibilityPermission()
+    } else {
+      SmartElementQueryService.shared.cancelPendingQueries()
+    }
     dimLayer.backgroundColor = showSelectionAreaOverlay ? dimColor.cgColor : nil
     dimLayer.mask = nil
     dimLayer.frame = bounds
@@ -3408,6 +3487,18 @@ final class AreaSelectionOverlayView: NSView {
     var testCursorProxyLayer: CALayer {
       cursorProxyLayer
     }
+
+    var testSelectionBorderLayer: CAShapeLayer {
+      selectionBorderLayer
+    }
+
+    var testHoveredWindowCandidate: WindowSelectionCandidate? {
+      hoveredWindowCandidate
+    }
+
+    var testIsAutoWindowDetectionActive: Bool {
+      isAutoWindowDetectionActive
+    }
   #endif
 
   /// Initialize crosshair at current mouse position (called on activation)
@@ -3819,6 +3910,14 @@ final class AreaSelectionOverlayView: NSView {
       return
     }
 
+    // Auto-detection already surfaces window selection via hover — the "press A" prompt would
+    // be misleading now that the shortcut isn't needed to see it.
+    if interactionMode == .manualRegion, isAutoWindowDetectionActive {
+      modeHintBackgroundLayer.isHidden = true
+      modeHintTextLayer.isHidden = true
+      return
+    }
+
     let shortcut: CaptureOverlayShortcut? = switch selectionMode {
     case .screenshot, .scrollingCapture:
       CaptureOverlayShortcutSettings.applicationCaptureShortcut
@@ -4050,17 +4149,52 @@ final class AreaSelectionOverlayView: NSView {
     updateWindowHover(at: localPoint)
   }
 
+  /// AppKit global screen coordinates (bottom-left origin) to Quartz global coordinates
+  /// (top-left origin, what `CGEvent.location` and `SmartElementQueryService.updateLocation`
+  /// use) — a self-inverse flip against the main display's height.
+  private func quartzGlobalPoint(fromAppKitScreenPoint point: CGPoint) -> CGPoint {
+    let mainScreenHeight = NSScreen.screens.first(where: { $0.displayID == CGMainDisplayID() })?.frame.height
+      ?? CGDisplayBounds(CGMainDisplayID()).height
+    return CGPoint(x: point.x, y: mainScreenHeight - point.y)
+  }
+
   private func updateWindowHover(at point: CGPoint) {
     currentMousePosition = point
-    guard window != nil else {
+    guard let window else {
       hoveredWindowCandidate = nil
       if interactionMode == .applicationWindow {
         updateApplicationSelectionLayers()
       }
       return
     }
-    let screenPoint = NSEvent.mouseLocation
+    // Convert the already-live `point` the caller just measured, rather than re-reading
+    // `NSEvent.mouseLocation` independently: live-passthrough capture's `CGEvent` tap consumes
+    // every mouse-moved event for its own hover tracking, so `NSEvent.mouseLocation` stops
+    // advancing while it's active and stays frozen at the session-start position — `point` is
+    // always live because it comes from whichever source (a real mouse-moved event, or the
+    // tap's own tracked position under passthrough) the caller already resolved correctly.
+    #if DEBUG
+      let screenPoint = testMouseLocationOverride ?? window.convertPoint(toScreen: convert(point, to: nil))
+    #else
+      let screenPoint = window.convertPoint(toScreen: convert(point, to: nil))
+    #endif
     hoveredWindowCandidate = windowSelectionSnapshot?.hitTest(at: screenPoint)
+    // Auto-detection also layers in element-level detection (a button, a popup, an element
+    // inside a browser page) on top of the whole-window highlight above — kick off the
+    // (debounced, backgrounded) AX query here; the result arrives later via
+    // `smartElementCancellable` and re-renders once it does. Scoped to auto-detection only:
+    // the explicit "A" toggle mode is for selecting a whole window on purpose.
+    if isAutoElementDetectionActive, interactionMode == .manualRegion {
+      // `updateLocation(_:pid:)`, not `updateMouseLocation(pid:)`: the latter internally
+      // re-reads `CGEvent(source: nil)?.location`, which goes stale under live-passthrough
+      // capture (see its doc comment) — `screenPoint` above is already the correct, live
+      // position (it's what window-level hit-testing uses), just in AppKit's bottom-left
+      // origin instead of the top-left origin `CGEvent.location` uses.
+      SmartElementQueryService.shared.updateLocation(
+        quartzGlobalPoint(fromAppKitScreenPoint: screenPoint),
+        pid: hoveredWindowCandidate?.target.ownerPID
+      )
+    }
     if interactionMode == .applicationWindow {
       updateApplicationSelectionLayers()
     }
@@ -4075,8 +4209,10 @@ final class AreaSelectionOverlayView: NSView {
     verticalCrosshairLayer.isHidden = true
     hideSizeIndicator()
 
-    if let hoveredWindowCandidate {
-      let localRect = convertToLocalRect(hoveredWindowCandidate.target.frame).intersection(bounds)
+    let highlightScreenRect: CGRect? = (isAutoElementDetectionActive ? hoveredSmartElementRect : nil)
+      ?? hoveredWindowCandidate?.target.frame
+    if let highlightScreenRect {
+      let localRect = convertToLocalRect(highlightScreenRect).intersection(bounds)
       if localRect.isEmpty {
         selectionBorderLayer.isHidden = true
         dimLayer.mask = nil
@@ -4207,8 +4343,15 @@ final class AreaSelectionOverlayView: NSView {
     applyActiveCursor()
     switch interactionMode {
     case .manualRegion:
-      isSelecting = true
-      delegate?.overlayView(self, manualSelectionBeganAt: point)
+      if isAutoWindowDetectionActive, hoveredWindowCandidate != nil {
+        // Don't commit to a manual drag yet — the gesture might turn out to be a click on the
+        // hovered window instead. `handlePrimaryMouseDragged` resolves it once it clears the
+        // drag threshold; `handlePrimaryMouseUp` resolves it if it never does.
+        pendingWindowDetectionStartPoint = point
+      } else {
+        isSelecting = true
+        delegate?.overlayView(self, manualSelectionBeganAt: point)
+      }
     case .applicationWindow:
       updateWindowHover(at: point)
     }
@@ -4226,6 +4369,25 @@ final class AreaSelectionOverlayView: NSView {
     applyActiveCursor()
     switch interactionMode {
     case .manualRegion:
+      if let pendingStart = pendingWindowDetectionStartPoint {
+        let distance = hypot(point.x - pendingStart.x, point.y - pendingStart.y)
+        guard distance >= windowDetectionDragThreshold else {
+          // Still within the click/drag ambiguity window — keep tracking whatever window is
+          // under the cursor so the highlight follows the (still not-yet-a-drag) pointer.
+          updateWindowHover(at: point)
+          updateApplicationSelectionLayers()
+          return
+        }
+        // Crossed the threshold: this is a drag, not a click. Replay it as a manual selection
+        // starting from the original mouseDown point so the drawn rect matches what the user
+        // actually dragged.
+        pendingWindowDetectionStartPoint = nil
+        isSelecting = true
+        delegate?.overlayView(self, manualSelectionBeganAt: pendingStart)
+        delegate?.overlayView(self, manualSelectionChangedTo: point)
+        updateMagnifier(at: point)
+        return
+      }
       guard isSelecting else { return }
       delegate?.overlayView(self, manualSelectionChangedTo: point)
       updateMagnifier(at: point)
@@ -4244,6 +4406,19 @@ final class AreaSelectionOverlayView: NSView {
 
     switch interactionMode {
     case .manualRegion:
+      if pendingWindowDetectionStartPoint != nil {
+        // Released before crossing the drag threshold: treat it as a click on the hovered
+        // window (or, if a finer element was detected, that element) rather than an (empty,
+        // sub-threshold) manual region.
+        pendingWindowDetectionStartPoint = nil
+        updateWindowHover(at: point)
+        if isAutoElementDetectionActive, let hoveredSmartElementRect {
+          delegate?.overlayView(self, didSelectRect: convertToLocalRect(hoveredSmartElementRect))
+        } else if let hoveredWindowCandidate {
+          delegate?.overlayView(self, didSelectWindow: hoveredWindowCandidate.target)
+        }
+        return
+      }
       guard isSelecting else { return }
       isSelecting = false
 
@@ -4266,8 +4441,17 @@ final class AreaSelectionOverlayView: NSView {
     switch interactionMode {
     case .manualRegion:
       if !isSelecting {
-        updateCrosshairLayers()
         updateMagnifier(at: point)
+        if isAutoWindowDetectionActive {
+          updateWindowHover(at: point)
+          if hoveredWindowCandidate != nil {
+            updateApplicationSelectionLayers()
+          } else {
+            updateCrosshairLayers()
+          }
+        } else {
+          updateCrosshairLayers()
+        }
       }
     case .applicationWindow:
       updateWindowHover(at: point)
@@ -4283,6 +4467,19 @@ final class AreaSelectionOverlayView: NSView {
       guard selectionEnabled else { return .arrow }
       return NSCursor.applicationWindowCursor
     }
+  }
+
+  /// Whether hovering in `.manualRegion` mode should preview the window under the cursor —
+  /// the preference is meaningless unless this session actually has window-selection data to
+  /// hit-test against (`allowsApplicationWindowSelection`, set from `applicationConfiguration`).
+  private var isAutoWindowDetectionActive: Bool {
+    autoDetectWindowUnderCursor && allowsApplicationWindowSelection
+  }
+
+  /// Whether the finer-grained AX element highlight (see `hoveredSmartElementRect`) should
+  /// layer on top of the whole-window one above.
+  private var isAutoElementDetectionActive: Bool {
+    isAutoWindowDetectionActive && autoDetectElementUnderCursor
   }
 
   var isManualSelectionInProgress: Bool {

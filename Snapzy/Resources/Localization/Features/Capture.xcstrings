@@ -17296,6 +17296,266 @@
         }
       }
     },
+    "preferences-capture.auto-detect-window-under-cursor-title": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fenster unter dem Cursor automatisch erkennen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatically detect window under cursor"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detectar automáticamente la ventana bajo el cursor"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Détecter automatiquement la fenêtre sous le curseur"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "カーソル下のウィンドウを自動検出"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "커서 아래 창 자동 감지"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Автоматически определять окно под курсором"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tự động phát hiện cửa sổ dưới con trỏ"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自动检测光标所在窗口"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自動偵測游標所在視窗"
+          }
+        }
+      }
+    },
+    "preferences-capture.auto-detect-window-under-cursor-description": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hebt das Fenster unter dem Cursor hervor und wählt es aus, ohne dass zuerst eine Taste gedrückt werden muss; ziehen Sie stattdessen, um eine manuelle Auswahl zu zeichnen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Highlight and select the window under the cursor without pressing a key first; drag to draw a manual selection instead"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resalta y selecciona la ventana bajo el cursor sin necesidad de pulsar una tecla antes; arrastra para dibujar una selección manual"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Met en surbrillance et sélectionne la fenêtre sous le curseur sans appuyer sur une touche au préalable ; faites glisser pour dessiner une sélection manuelle"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "キーを押さなくてもカーソル下のウィンドウをハイライトして選択します。ドラッグすると手動選択になります"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "키를 누르지 않아도 커서 아래 창을 강조 표시하고 선택합니다. 드래그하면 수동 선택으로 전환됩니다"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выделяет и выбирает окно под курсором без предварительного нажатия клавиши; перетащите, чтобы выделить область вручную"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Làm nổi bật và chọn cửa sổ dưới con trỏ mà không cần nhấn phím trước; kéo để vẽ vùng chọn thủ công"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无需按键，鼠标悬停即可高亮并选中光标下的窗口；拖动鼠标则改为手动框选"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "不需按鍵，滑鼠移到視窗上即可高亮並選取該視窗；拖曳滑鼠則改為手動框選"
+          }
+        }
+      }
+    },
+    "preferences-capture.auto-detect-element-under-cursor-title": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auch bestimmte Elemente erkennen, nicht nur Fenster"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Also detect specific elements, not just windows"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detectar también elementos específicos, no solo ventanas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Détecter aussi des éléments spécifiques, pas seulement les fenêtres"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ウィンドウだけでなく特定の要素も検出する"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "창뿐만 아니라 특정 요소도 감지"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Также определять отдельные элементы, а не только окна"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cũng phát hiện các phần tử cụ thể, không chỉ cửa sổ"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同时识别具体元素，不仅是窗口"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同時識別具體元素，不僅是視窗"
+          }
+        }
+      }
+    },
+    "preferences-capture.auto-detect-element-under-cursor-description": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hebt beim Bewegen der Maus eine bestimmte Schaltfläche, ein Popup oder ein Webseitenelement hervor, anstatt das ganze Fenster. Erfordert die obige Einstellung."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Highlight a specific button, popup, or webpage element when hovering, instead of the whole window. Requires the setting above."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resalta un botón, ventana emergente o elemento web específico al pasar el cursor, en lugar de toda la ventana. Requiere que la opción anterior esté activada."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Met en surbrillance un bouton, une fenêtre contextuelle ou un élément de page web spécifique lors du survol, au lieu de toute la fenêtre. Nécessite que le réglage ci-dessus soit activé."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ホバー時にウィンドウ全体ではなく、特定のボタン、ポップアップ、またはウェブページの要素をハイライトします。上記の設定が必要です。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "마우스를 올리면 창 전체 대신 특정 버튼, 팝업 또는 웹페이지 요소를 강조 표시합니다. 위 설정이 켜져 있어야 합니다."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "При наведении выделяется конкретная кнопка, всплывающее окно или элемент веб-страницы, а не всё окно целиком. Требует включения настройки выше."
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Làm nổi bật một nút, cửa sổ bật lên hoặc phần tử trang web cụ thể khi di chuột qua, thay vì toàn bộ cửa sổ. Yêu cầu bật cài đặt phía trên."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "悬停时高亮具体的按钮、弹窗或网页元素，而不是整个窗口。需要先开启上面的设置。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "游標移到上方時高亮具體的按鈕、彈窗或網頁元素，而不是整個視窗。需要先開啟上面的設定。"
+          }
+        }
+      }
+    },
     "preferences-capture.overlay-section": {
       "extractionState": "manual",
       "localizations": {

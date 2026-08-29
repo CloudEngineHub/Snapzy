@@ -66,6 +66,8 @@ enum PreferencesKeys {
   static let screenshotLivePassthrough = "screenshot.livePassthrough"
   static let screenshotShowSelectionAreaOverlay = "screenshot.showSelectionAreaOverlay"
   static let screenshotReverseMagnifierZoomDirection = "screenshot.reverseMagnifierZoomDirection"
+  static let screenshotAutoDetectWindowUnderCursor = "screenshot.autoDetectWindowUnderCursor"
+  static let screenshotAutoDetectElementUnderCursor = "screenshot.autoDetectElementUnderCursor"
   static let screenshotShowMagnifierByDefault = "screenshot.showMagnifierByDefault"
   static let screenshotShowMagnifierColorPanel = "screenshot.showMagnifierColorPanel"
   static let screenshotLastAreaRect = "screenshot.lastAreaRect"
