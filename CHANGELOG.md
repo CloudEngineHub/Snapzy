@@ -4,6 +4,15 @@ All notable changes to Snapzy will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.32.0-beta.13] - 2026-09-13
+
+### Features
+-  Added collapsible contributors section to About preferences (8e75afb2)
+
+### Contributors
+- @duongductrong
+- @github-actions[bot]
+
 ## [1.32.0-beta.12] - 2026-09-11
 
 ### Bug Fixes
