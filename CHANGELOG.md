@@ -4,6 +4,15 @@ All notable changes to Snapzy will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.32.0-beta.14] - 2026-09-15
+
+### Features
+-  Added curve arrow control handle (#567) (beb8dcee)
+
+### Contributors
+- @github-actions[bot]
+- @tukuyomil032
+
 ## [1.32.0-beta.13] - 2026-09-13
 
 ### Features
