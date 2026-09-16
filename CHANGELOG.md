@@ -4,139 +4,31 @@ All notable changes to Snapzy will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [1.32.0-beta.14] - 2026-09-15
+## [1.32.0] - 2026-09-16
 
 ### Features
 -  Added curve arrow control handle (#567) (beb8dcee)
-
-### Contributors
-- @github-actions[bot]
-- @tukuyomil032
-
-## [1.32.0-beta.13] - 2026-09-13
-
-### Features
 -  Added collapsible contributors section to About preferences (8e75afb2)
-
-### Contributors
-- @duongductrong
-- @github-actions[bot]
-
-## [1.32.0-beta.12] - 2026-09-11
+-  Added pin action and shortcut to history floating panel (#552) (d860e7f6)
+-  Added camera overlay to screen recordings (#560) (41222250)
+-  Modernize preferences UI, settings navigation, and interactive onboarding flow (#557) (5b1e4393)
+-  Added drag-to-app to History cards with scroll-safe gesture arbitration (a8d633a8)
+-  Show progress and outcome for OCR capture (#505) (c81bd43b)
+-  Reduce friction in window/element capture — auto-detect under cursor, layered smart element detection (#472) (a30a9a02)
 
 ### Bug Fixes
 -  Fixed recording-session shortcut gating timing bug (#517) (b48ee9ce)
-
-### Contributors
-- @duongductrong
-- @github-actions[bot]
-
-## [1.32.0-beta.11] - 2026-09-11
-
-### Features
--  Added pin action and shortcut to history floating panel (#552) (d860e7f6)
--  Added camera overlay to screen recordings (#560) (41222250)
-
-### Contributors
-- @duongductrong
-- @github-actions[bot]
-- @mukhtharcm
-
-## [1.32.0-beta.10] - 2026-09-10
-
-### Features
--  Modernize preferences UI, settings navigation, and interactive onboarding flow (#557) (5b1e4393)
-
-### Contributors
-- @duongductrong
-- @github-actions[bot]
-
-## [1.32.0-beta.9] - 2026-09-09
-
-### Bug Fixes
 -  Fixed canvas hit testing under SwiftUI zoom/pan transforms (348bd768)
 -  Fixed selection chrome sizing during zoom (2dc8e9e5)
 -  Prevented corrupted seams during scrolling auto-scroll (#538) (e603c6af)
-
-### Contributors
-- @BenjaminD2023
-- @duongductrong
-- @github-actions[bot]
-
-## [1.32.0-beta.8] - 2026-09-08
-
-### Features
--  Added drag-to-app to History cards with scroll-safe gesture arbitration (a8d633a8)
-
-### Contributors
-- @duongductrong
-- @github-actions[bot]
-
-## [1.32.0-beta.7] - 2026-09-07
-
-### Features
--  Show progress and outcome for OCR capture (#505) (c81bd43b)
-
-### Bug Fixes
 -  Fixed selection tool active after selecting annotations (673984eb)
 -  Added AnnotateWindowEventRouter to isolate multi-window viewport (#553) (e204713b)
 -  Fixed Carbon hotkeys with CGEventTap for exact key matching (f591f320)
-
-### Contributors
-- @duongductrong
-- @github-actions[bot]
-- @vxirau
-
-## [1.32.0-beta.6] - 2026-09-05
-
-### Bug Fixes
 -  Fixed allow drawing over existing annotations (#546) (126fc2e4)
-
-### Contributors
-- @github-actions[bot]
-- @tukuyomil032
-
-## [1.32.0-beta.5] - 2026-08-29
-
-### Features
--  Reduce friction in window/element capture — auto-detect under cursor, layered smart element detection (#472) (a30a9a02)
-
-### Contributors
-- @github-actions[bot]
-- @lcopilot
-
-## [1.32.0-beta.4] - 2026-08-23
-
-### Bug Fixes
 -  Fixed render canvas shadow in screenshot exports (#510) (4fa04df8)
 -  keep space-to-move selection locked to the pointer (#504) (cd39ebee)
-
-### Contributors
-- @RaviMaru20
-- @github-actions[bot]
-- @vxirau
-
-## [1.32.0-beta.3] - 2026-08-21
-
-### Bug Fixes
 -  Fixed Pin DateFormatter to Gregorian locale for filename tokens (#486) (1bacf958)
-
-### Contributors
-- @YuriNachos
-- @github-actions[bot]
-
-## [1.32.0-beta.2] - 2026-08-20
-
-### Bug Fixes
 -  improve Japanese localization wording across Snapzy (#513) (2cc73e66)
-
-### Contributors
-- @github-actions[bot]
-- @tukuyomil032
-
-## [1.32.0-beta.1] - 2026-08-17
-
-### Bug Fixes
 -  Update .gitignore content (af7095bc)
 -  Fixed percent-encode object-key path in AWS SigV4 presigned URLs (#491) (a9991aa4)
 -  Fixed surface hours in capture/video duration labels (#490) (5624a89b)
@@ -145,9 +37,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - chore: Update README, SECURITY and APP_LIFECYCLE content (8ce63ad1)
 
 ### Contributors
+- @BenjaminD2023
+- @RaviMaru20
 - @YuriNachos
 - @duongductrong
 - @github-actions[bot]
+- @lcopilot
+- @mukhtharcm
+- @tukuyomil032
+- @vxirau
 
 ## [1.31.0] - 2026-08-15
 
