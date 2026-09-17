@@ -271,6 +271,16 @@ final class RecordingAnnotationToolbarWindow: NSWindow {
     setFrameOrigin(CGPoint(x: x, y: y))
   }
 
+  /// The popover can own first responder while it is visible. Forward tool
+  /// shortcuts here as a direct-window fallback; the annotation overlay's
+  /// local monitor handles normal AppKit event delivery before this method.
+  override func keyDown(with event: NSEvent) {
+    guard annotationState.selectTool(for: event) else {
+      super.keyDown(with: event)
+      return
+    }
+  }
+
   override var canBecomeKey: Bool { true }
 
   override func close() {

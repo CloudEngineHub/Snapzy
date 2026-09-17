@@ -77,6 +77,10 @@ All 19 `GlobalShortcutKind`s with shipping defaults (verified in `KeyboardShortc
 - `pauseResumeRecording` no-ops unless a recording is active (`state.isPauseResumeEligible` guard, logged when ignored).
 - `togglePenRecording` no-ops unless `RecordingCoordinator.shared.isActive`.
 
+## Recording annotation tool shortcuts
+
+While recording annotations are enabled, hold the configured annotation shortcut modifier (Shift by default) and press a tool key to switch tools. `RecordingAnnotationOverlayWindow` routes key-down events through `RecordingAnnotationState` using `charactersIgnoringModifiers`, with a local monitor for events addressed to Snapzy and a global monitor for events addressed to the recorded app. Matching local events are consumed; global monitors are passive and cannot suppress the recorded app's keystroke, and external-app delivery requires Accessibility permission. The visible tool set is selection, rectangle, oval, arrow, line, pencil, and highlighter.
+
 ## Quick Access card action shortcuts (hover-scoped)
 
 `QuickAccessActionShortcutStore` (`Snapzy/Features/QuickAccess/Models/QuickAccessActionShortcutStore.swift`) +
