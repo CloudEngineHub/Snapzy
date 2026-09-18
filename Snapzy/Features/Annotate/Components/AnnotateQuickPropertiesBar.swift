@@ -148,6 +148,10 @@ struct AnnotateQuickPropertiesBar: View {
   private let textBackgroundColors: [Color] = [.clear, .white, .black, .yellow, .blue]
   private let selectionStyleTools: [AnnotationToolType] = [.selection, .rectangle, .arrow, .text, .watermark, .highlighter]
 
+  private var strokeColorsForActiveTool: [Color] {
+    state.quickPropertiesTool == .spotlight ? [.clear] + strokeColors : strokeColors
+  }
+
   var body: some View {
     ViewThatFits(in: .horizontal) {
       barContent(density: .regular)
@@ -249,7 +253,7 @@ struct AnnotateQuickPropertiesBar: View {
         QuickPropertiesColorPopoverControl(
           title: colorTitle,
           selectedColor: state.quickStrokeColorBinding,
-          colors: strokeColors,
+          colors: strokeColorsForActiveTool,
           role: .annotationStroke,
           quickColorLimit: density == .regular ? 4 : 2,
           groupSpacing: density.groupSpacing

@@ -1444,7 +1444,7 @@ nonisolated enum AnnotationType: Equatable {
   /// silhouettes, so only the classic arrow qualifies.
   var supportsQuickLineStyle: Bool {
     switch self {
-    case .rectangle, .filledRectangle, .oval, .line:
+    case .rectangle, .filledRectangle, .oval, .line, .spotlight:
       return true
     case .arrow(let geometry):
       return geometry.arrowType == .classic

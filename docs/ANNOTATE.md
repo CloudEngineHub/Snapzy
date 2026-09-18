@@ -78,7 +78,7 @@ The `.accessory` activation-policy revert is deferred to a later runloop turn (s
 
 ## Spotlight
 
-- `AnnotateSpotlightCompositor` — dim-with-holes compositing via transparency layers + clear blend mode; overlapping regions union.
+- `AnnotateSpotlightCompositor` — dim-with-holes compositing via transparency layers + clear blend mode; overlapping regions union. Each spotlight can optionally draw a rectangle-style border using its stroke color, width, corner radius, and line style; the border is transparent by default and stays below regular annotations. Choosing `None` is a Spotlight-local opt-out, even when shared tool defaults are enabled.
 - Single global dim opacity clamped 0.1–0.9 (default 0.5), sourced from first committed region.
 
 ## Counter, Highlighter, Watermark, Crop

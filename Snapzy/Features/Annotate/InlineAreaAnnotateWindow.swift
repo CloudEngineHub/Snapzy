@@ -1847,6 +1847,10 @@ private struct InlineAreaPropertiesBar: View {
   private let fillColors: [Color] = [.clear, .red, .orange, .yellow, .green, .blue, .purple, .white, .black]
   private let textBackgroundColors: [Color] = [.clear, .white, .black, .yellow, .blue]
 
+  private var strokeColorsForActiveTool: [Color] {
+    state.quickPropertiesTool == .spotlight ? [.clear] + strokeColors : strokeColors
+  }
+
   var body: some View {
     ZStack(alignment: .leading) {
       ScrollView(.horizontal, showsIndicators: false) {
@@ -1857,7 +1861,7 @@ private struct InlineAreaPropertiesBar: View {
             InlineAreaColorControl(
               title: colorTitle,
               selectedColor: state.quickStrokeColorBinding,
-              colors: strokeColors,
+              colors: strokeColorsForActiveTool,
               role: .annotationStroke,
               popoverEdge: popoverEdge
             )

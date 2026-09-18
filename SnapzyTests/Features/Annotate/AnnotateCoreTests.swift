@@ -967,6 +967,69 @@ final class AnnotateCoreTests: XCTestCase {
   }
 
   @MainActor
+  func testCanvasSpotlightToolCreatesNewSpotlightOverExistingSpotlight() throws {
+    let state = makeAnnotateState()
+    let existing = AnnotationItem(
+      type: .spotlight,
+      bounds: CGRect(x: 10, y: 10, width: 80, height: 80),
+      properties: AnnotationProperties()
+    )
+    state.annotations = [existing]
+    state.selectedAnnotationId = existing.id
+    state.selectedTool = .spotlight
+
+    let canvas = DrawingCanvasNSView(state: state)
+    canvas.frame = CGRect(x: 0, y: 0, width: 400, height: 300)
+    canvas.displayScale = 1
+    canvas.canvasBounds = CGRect(x: 0, y: 0, width: 400, height: 300)
+
+    let start = CGPoint(x: 30, y: 30)
+    let end = CGPoint(x: 160, y: 120)
+    canvas.mouseDown(with: makeMouseEvent(type: .leftMouseDown, location: start))
+    canvas.mouseDragged(with: makeMouseEvent(type: .leftMouseDragged, location: end))
+    canvas.mouseUp(with: makeMouseEvent(type: .leftMouseUp, location: end))
+
+    XCTAssertEqual(state.annotations.count, 2)
+    XCTAssertEqual(state.annotations[0].id, existing.id)
+    XCTAssertEqual(state.annotations[0].bounds, existing.bounds)
+
+    let created = try XCTUnwrap(state.annotations.last)
+    XCTAssertEqual(created.type, .spotlight)
+    XCTAssertEqual(created.bounds, CGRect(x: 30, y: 30, width: 130, height: 90))
+  }
+
+  @MainActor
+  func testCanvasRectangleToolCreatesNewRectangleOverExistingSpotlight() throws {
+    let state = makeAnnotateState()
+    let existing = AnnotationItem(
+      type: .spotlight,
+      bounds: CGRect(x: 10, y: 10, width: 80, height: 80),
+      properties: AnnotationProperties()
+    )
+    state.annotations = [existing]
+    state.selectedTool = .rectangle
+
+    let canvas = DrawingCanvasNSView(state: state)
+    canvas.frame = CGRect(x: 0, y: 0, width: 400, height: 300)
+    canvas.displayScale = 1
+    canvas.canvasBounds = CGRect(x: 0, y: 0, width: 400, height: 300)
+
+    let start = CGPoint(x: 30, y: 30)
+    let end = CGPoint(x: 160, y: 120)
+    canvas.mouseDown(with: makeMouseEvent(type: .leftMouseDown, location: start))
+    canvas.mouseDragged(with: makeMouseEvent(type: .leftMouseDragged, location: end))
+    canvas.mouseUp(with: makeMouseEvent(type: .leftMouseUp, location: end))
+
+    XCTAssertEqual(state.annotations.count, 2)
+    XCTAssertEqual(state.annotations[0].id, existing.id)
+    XCTAssertEqual(state.annotations[0].bounds, existing.bounds)
+
+    let created = try XCTUnwrap(state.annotations.last)
+    XCTAssertEqual(created.type, .rectangle)
+    XCTAssertEqual(created.bounds, CGRect(x: 30, y: 30, width: 130, height: 90))
+  }
+
+  @MainActor
   func testCanvasArrowToolStartsDrawingOnExistingAnnotation() throws {
     let state = makeAnnotateState()
     let existing = AnnotationItem(
@@ -2960,6 +3023,96 @@ final class AnnotateCoreTests: XCTestCase {
     (y * width + x) * 4
   }
 
+  func testSpotlightSupportsRectangleStyleProperties() {
+    XCTAssertTrue(AnnotationToolType.spotlight.supportsQuickStrokeColor)
+    XCTAssertTrue(AnnotationToolType.spotlight.supportsQuickStrokeWidth)
+    XCTAssertTrue(AnnotationToolType.spotlight.supportsQuickLineStyle)
+    XCTAssertTrue(AnnotationType.spotlight.supportsQuickStrokeColor)
+    XCTAssertTrue(AnnotationType.spotlight.supportsQuickStrokeWidth)
+    XCTAssertTrue(AnnotationType.spotlight.supportsQuickLineStyle)
+  }
+
+  func testSpotlightCompositorDrawsConfiguredBorder() throws {
+    let width = 100
+    let height = 100
+    var bytes = [UInt8](repeating: 0, count: width * height * 4)
+
+    try bytes.withUnsafeMutableBytes { buffer in
+      let context = try XCTUnwrap(CGContext(
+        data: buffer.baseAddress,
+        width: width,
+        height: height,
+        bitsPerComponent: 8,
+        bytesPerRow: width * 4,
+        space: CGColorSpaceCreateDeviceRGB(),
+        bitmapInfo: rgbaBitmapInfo.rawValue
+      ))
+      context.setFillColor(NSColor.white.cgColor)
+      context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+
+      SpotlightCompositor.drawOverlay(
+        regions: [
+          SpotlightRegion(
+            rect: CGRect(x: 20, y: 20, width: 60, height: 60),
+            cornerRadius: 0,
+            opacity: 0.5,
+            strokeColor: NSColor.red.cgColor,
+            strokeWidth: 4,
+            lineStyle: .solid
+          ),
+        ],
+        previewRegion: nil,
+        canvasRect: CGRect(x: 0, y: 0, width: width, height: height),
+        in: context
+      )
+    }
+
+    let borderIndex = rgbaIndex(x: 20, y: 50, width: width)
+    XCTAssertGreaterThan(bytes[borderIndex], 200)
+    XCTAssertLessThan(bytes[borderIndex + 1], 100)
+    XCTAssertLessThan(bytes[borderIndex + 2], 100)
+  }
+
+  func testSpotlightCompositorSkipsTransparentBorder() throws {
+    let width = 100
+    let height = 100
+    var bytes = [UInt8](repeating: 0, count: width * height * 4)
+
+    try bytes.withUnsafeMutableBytes { buffer in
+      let context = try XCTUnwrap(CGContext(
+        data: buffer.baseAddress,
+        width: width,
+        height: height,
+        bitsPerComponent: 8,
+        bytesPerRow: width * 4,
+        space: CGColorSpaceCreateDeviceRGB(),
+        bitmapInfo: rgbaBitmapInfo.rawValue
+      ))
+      context.setFillColor(NSColor.white.cgColor)
+      context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+
+      SpotlightCompositor.drawOverlay(
+        regions: [
+          SpotlightRegion(
+            rect: CGRect(x: 20, y: 20, width: 60, height: 60),
+            cornerRadius: 0,
+            opacity: 0.5,
+            strokeColor: NSColor.clear.cgColor,
+            strokeWidth: 4,
+            lineStyle: .solid
+          ),
+        ],
+        previewRegion: nil,
+        canvasRect: CGRect(x: 0, y: 0, width: width, height: height),
+        in: context
+      )
+    }
+
+    let borderIndex = rgbaIndex(x: 20, y: 50, width: width)
+    XCTAssertEqual(bytes[borderIndex], bytes[borderIndex + 1])
+    XCTAssertEqual(bytes[borderIndex + 1], bytes[borderIndex + 2])
+  }
+
   @MainActor
   func testSpotlightAnnotationCreation() {
     let defaults = UserDefaultsFactory.make()
@@ -2978,6 +3131,49 @@ final class AnnotateCoreTests: XCTestCase {
     XCTAssertEqual(item?.bounds, CGRect(x: 10, y: 10, width: 90, height: 90))
     XCTAssertEqual(item?.properties.spotlightOpacity, 0.5)
     XCTAssertEqual(item?.properties.cornerRadius, 14)
+    XCTAssertTrue(AnnotateColorPaletteStore.isClear(item?.properties.strokeColor ?? .red))
+  }
+
+  @MainActor
+  func testSpotlightQuickPropertiesApplyToNewAnnotations() throws {
+    let state = makeAnnotateState(defaults: UserDefaultsFactory.make())
+    state.selectedTool = .spotlight
+
+    XCTAssertTrue(state.quickPropertiesSupportsStrokeColor)
+    XCTAssertTrue(state.quickPropertiesSupportsStrokeWidth)
+    XCTAssertTrue(state.quickPropertiesSupportsLineStyle)
+    XCTAssertTrue(AnnotateColorPaletteStore.isClear(state.quickStrokeColorBinding.wrappedValue))
+
+    state.selectedTool = .rectangle
+    state.quickStrokeColorBinding.wrappedValue = .green
+    state.selectedTool = .spotlight
+    XCTAssertTrue(AnnotateColorPaletteStore.isClear(state.quickStrokeColorBinding.wrappedValue))
+
+    state.quickStrokeColorBinding.wrappedValue = .blue
+    state.quickStrokeWidthBinding.wrappedValue = 8
+    state.quickLineStyleBinding.wrappedValue = .dashed
+
+    let properties = state.annotationCreationProperties(for: .spotlight)
+    assertColorsMatch(properties.strokeColor, .blue)
+    XCTAssertEqual(properties.strokeWidth, 8)
+    XCTAssertEqual(properties.lineStyle, .dashed)
+
+    let item = try XCTUnwrap(AnnotationFactory.createAnnotation(
+      tool: .spotlight,
+      from: CGPoint(x: 10, y: 10),
+      to: CGPoint(x: 100, y: 100),
+      path: [],
+      state: state
+    ))
+    assertColorsMatch(item.properties.strokeColor, .blue)
+    XCTAssertEqual(item.properties.strokeWidth, 8)
+    XCTAssertEqual(item.properties.lineStyle, .dashed)
+
+    state.quickStrokeColorBinding.wrappedValue = .clear
+    XCTAssertTrue(AnnotateColorPaletteStore.isClear(state.annotationCreationProperties(for: .spotlight).strokeColor))
+
+    state.selectedTool = .rectangle
+    assertColorsMatch(state.annotationCreationProperties(for: .rectangle).strokeColor, .blue)
   }
 
   @MainActor

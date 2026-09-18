@@ -3783,12 +3783,18 @@ final class AnnotateState: ObservableObject {
     color: Color,
     recordsUndo: Bool = false
   ) {
+    let isSpotlight = annotations.first(where: { $0.id == id })?.type.toolType == .spotlight
     updateAnnotationProperties(
       id: id,
       strokeColor: color,
       recordsUndo: recordsUndo
     )
-    if isQuickPropertiesSyncEnabled {
+    if isSpotlight {
+      updateDefaultAnnotationProperties(for: .spotlight, strokeColor: color)
+      if !isTransparentColor(color), isQuickPropertiesSyncEnabled {
+        rememberSharedAnnotationColor(color)
+      }
+    } else if isQuickPropertiesSyncEnabled {
       rememberSharedAnnotationColor(color)
     }
   }
@@ -4175,6 +4181,13 @@ final class AnnotateState: ObservableObject {
     applySharedAnnotationColorToToolDefaults(color)
   }
 
+  private func isTransparentColor(_ color: Color) -> Bool {
+    guard let rgba = RGBAColor(color: color) else {
+      return color == .clear
+    }
+    return rgba.alpha <= 0.001
+  }
+
   private func loadSharedAnnotationParameterDefaults() {
     guard let data = defaults.data(forKey: PreferencesKeys.annotateParameterDefaults),
           let decoded = try? JSONDecoder().decode(SharedAnnotationParameterDefaults.self, from: data)
@@ -4324,6 +4337,11 @@ final class AnnotateState: ObservableObject {
   }
 
   private func rememberAnnotationPrimaryColor(_ color: Color, for tool: AnnotationToolType?) {
+    if tool == .spotlight {
+      updateDefaultAnnotationProperties(for: .spotlight, strokeColor: color)
+      guard !isTransparentColor(color) else { return }
+    }
+
     guard !isQuickPropertiesSyncEnabled else {
       rememberSharedAnnotationColor(color)
       return
@@ -4426,6 +4444,12 @@ final class AnnotateState: ObservableObject {
 
   private func applySharedAnnotationColorToToolDefaults(_ color: Color) {
     for tool in AnnotationToolType.allCases where tool.supportsQuickStrokeColor {
+      if tool == .spotlight {
+        guard let spotlightProperties = annotationToolProperties[.spotlight],
+              !isTransparentColor(spotlightProperties.strokeColor) else {
+          continue
+        }
+      }
       var properties = defaultAnnotationProperties(for: tool)
       properties.strokeColor = color
       if tool == .filledRectangle {
@@ -4459,7 +4483,7 @@ final class AnnotateState: ObservableObject {
   private func baseAnnotationProperties(for tool: AnnotationToolType) -> AnnotationProperties {
     if tool == .spotlight {
       var properties = AnnotationProperties(
-        strokeColor: sharedAnnotationColor ?? .red,
+        strokeColor: .clear,
         fillColor: .clear,
         strokeWidth: 3,
         cornerRadius: 14,
@@ -4503,7 +4527,7 @@ final class AnnotateState: ObservableObject {
   ) {
     let sharedProperties = baseAnnotationProperties(for: tool)
 
-    if tool.supportsQuickStrokeColor {
+    if tool.supportsQuickStrokeColor, tool != .spotlight {
       properties.strokeColor = sharedProperties.strokeColor
       if tool == .filledRectangle {
         properties.fillColor = sharedProperties.strokeColor
@@ -5454,13 +5478,20 @@ final class AnnotateState: ObservableObject {
       },
       set: { [weak self] newColor in
         guard let self else { return }
+        let selectedStrokeTargets = self.quickSelectionTargets(matching: { $0.supportsQuickStrokeColor })
+        let hasSpotlightTarget = selectedStrokeTargets.contains { $0.type.toolType == .spotlight }
         let didUpdateSelection = self.updateQuickSelectionProperties(
           strokeColor: newColor,
           recordsUndo: true,
           matching: { $0.supportsQuickStrokeColor }
         )
         if didUpdateSelection {
-          if self.isQuickPropertiesSyncEnabled {
+          if hasSpotlightTarget {
+            self.updateDefaultAnnotationProperties(for: .spotlight, strokeColor: newColor)
+          }
+          if self.isQuickPropertiesSyncEnabled && !(
+            hasSpotlightTarget && self.isTransparentColor(newColor)
+          ) {
             self.rememberSharedAnnotationColor(newColor)
           }
         } else {

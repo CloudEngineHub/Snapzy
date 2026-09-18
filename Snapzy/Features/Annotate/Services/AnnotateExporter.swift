@@ -565,7 +565,14 @@ final class AnnotateExporter {
         imageX: destX,
         imageY: destY
       )
-      return SpotlightRegion(rect: offset.bounds, cornerRadius: offset.properties.cornerRadius, opacity: offset.properties.spotlightOpacity)
+      return SpotlightRegion(
+        rect: offset.bounds,
+        cornerRadius: offset.properties.cornerRadius,
+        opacity: offset.properties.spotlightOpacity,
+        strokeColor: NSColor(offset.properties.strokeColor).cgColor,
+        strokeWidth: offset.properties.strokeWidth,
+        lineStyle: offset.properties.lineStyle
+      )
     }
     SpotlightCompositor.drawOverlay(
       regions: spotlightRegions,

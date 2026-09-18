@@ -1755,7 +1755,10 @@ final class DrawingCanvasNSView: NSView {
       return SpotlightRegion(
         rect: a.bounds,
         cornerRadius: a.properties.cornerRadius,
-        opacity: a.properties.spotlightOpacity
+        opacity: a.properties.spotlightOpacity,
+        strokeColor: NSColor(a.properties.strokeColor).cgColor,
+        strokeWidth: a.properties.strokeWidth,
+        lineStyle: a.properties.lineStyle
       )
     }
     let spotlightPreview: SpotlightRegion? = (isDrawing && state.selectedTool == .spotlight)
@@ -1764,7 +1767,10 @@ final class DrawingCanvasNSView: NSView {
           SpotlightRegion(
             rect: CGRect(x: min(s.x, $0.x), y: min(s.y, $0.y), width: abs($0.x - s.x), height: abs($0.y - s.y)),
             cornerRadius: spotlightCreationProps.cornerRadius,
-            opacity: spotlightCreationProps.spotlightOpacity
+            opacity: spotlightCreationProps.spotlightOpacity,
+            strokeColor: NSColor(spotlightCreationProps.strokeColor).cgColor,
+            strokeWidth: spotlightCreationProps.strokeWidth,
+            lineStyle: spotlightCreationProps.lineStyle
           )
         }
       }
