@@ -429,7 +429,31 @@ jobs:
           name: Snapzy-v${{ steps.version.outputs.version }}
           path: ${{ env.dmg_path }}
 
+      # v3 creates a draft release first, uploads assets, then publishes it.
+      # If the asset upload hits a transient GitHub error (e.g. HTTP 500
+      # "Unicorn" page on uploads.github.com), the job fails and leaves the
+      # orphan draft in place; a retry (or job re-run) reuses that draft and
+      # uploads into it before publishing.
       - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
+          body_path: ${{ steps.changelog.outputs.changelog_path }}
+          draft: false
+          prerelease: ${{ steps.version.outputs.is_beta == 'true' }}
+          files: ${{ env.dmg_path }}
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Wait before release retry
+        if: failure() && steps.create_release.conclusion == 'failure'
+        run: sleep 60
+
+      - name: Retry GitHub Release on transient upload failure
+        if: failure() && steps.create_release.conclusion == 'failure'
         uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.version.outputs.version }}
