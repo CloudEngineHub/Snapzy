@@ -114,7 +114,7 @@ Sparkle compares the numeric build number only — the `-beta.N` suffix is cosme
 
 Either:
 
-- **Actions → Release Prepare** on `master` (or `beta`) → run with `channel = beta` and a bump type (`patch`/`minor`/`major`). The bump type applies to the base version when starting a new beta line; subsequent betas keep the base and increment `N` (derived from existing `vX.Y.Z-beta.*` tags).
+- **Actions → Release Prepare** on `master` (or `beta`) → run with `channel = beta` and a bump type (`patch`/`minor`/`major`). The bump type applies to the base version when starting a new beta line; subsequent betas keep the base and increment `N` (derived from existing `vX.Y.Z-beta.*` tags) — unless the bump type outranks the current beta base, which starts a new line (e.g. `1.33.0-beta.2` + `major` → `2.0.0-beta.1`; + `minor`/`patch` → `1.33.0-beta.3`).
 - Or push a commit to `master` (or `beta`) titled `release(minor-beta): ...` (also `patch-beta`, `major-beta`).
 
 Then merge the generated `release/vX.Y.Z-beta.N` PR into `master` (or `beta`). The publish pipeline will:
@@ -133,11 +133,13 @@ Then merge the generated `release/vX.Y.Z-beta.N` PR into `master` (or `beta`). T
 Promotion is an ordinary stable release — a full rebuild from master HEAD (the version string is baked into the signed binary, so beta artifacts cannot be re-tagged):
 
 1. Ensure `master` contains exactly what should ship (no unwanted commits).
-2. **Actions → Release Prepare** on `master` → run with `channel = stable`. When the current version is a beta, the `-beta.N` suffix is stripped (bump type is ignored) → version `X.Y.Z`.
+2. **Actions → Release Prepare** on `master` → run with `channel = stable`. When the current version is a beta, the `-beta.N` suffix is stripped → version `X.Y.Z`, unless the bump type outranks that base (e.g. `1.33.0-beta.2` + `major` → `2.0.0`; + `minor`/`patch` → `1.33.0`).
 3. Review the `release/vX.Y.Z` PR into `master` — the changelog spans everything since the **last stable tag**, so all beta-tested commits are included. Merge.
 4. The publish pipeline runs the full stable path: `prerelease = false`, untagged appcast item, cask + README updated, Discord notify without `[Beta]`.
 5. Verify a beta-channel install is offered `X.Y.Z` (its build number is higher than every beta).
 
+> **Breaking changes:** commits titled `BREAKING CHANGE: …`, `type!: …` / `type(scope)!: …`, or carrying a `BREAKING CHANGE:` footer are listed in a `### Breaking Changes` section at the top of the generated changelog. Commits are classified on their subject line only.
+>
 > **Changelog folding:** the stable entry is the single source of truth for the whole beta cycle. `generate-changelog.sh` filters release-automation commits (`chore: bump version …`, `chore: update appcast …`, `chore: release v…`) out of every generated changelog, and `update-changelog.sh` removes the `## [X.Y.Z-beta.N]` sections of the same base version from `CHANGELOG.md` when the stable `X.Y.Z` entry is prepended — beta entries never appear alongside their stable promotion. Beta entries of abandoned lines (different base version) are left untouched.
 
 ### Switching Back from Beta (Downgrade Policy)
