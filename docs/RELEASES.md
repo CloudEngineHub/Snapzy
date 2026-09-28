@@ -97,9 +97,9 @@ The channel preference is stored in `updates.channel` (UserDefaults) and exporte
 
 ### Branch Model
 
-- `master` is the stable production line and the canonical source for `appcast.xml`; the Sparkle feed URL is intentionally served from `master` for both stable users and users who opt into beta updates.
-- `beta` is the pre-release integration line. CI, SwiftFormat validation, release preparation, and release publishing all recognize it as the beta target.
-- The release workflows enforce the pairing: stable releases target `master`, and beta releases target `beta`.
+- `master` is the primary production and release branch, and the canonical source for `appcast.xml`. The Sparkle feed URL is served from `master` for both stable users and users who opt into beta updates.
+- Both stable releases and beta releases can be released directly from `master`.
+- `beta` is also supported as a pre-release integration branch if needed.
 
 ### Versioning Scheme
 
@@ -114,17 +114,17 @@ Sparkle compares the numeric build number only — the `-beta.N` suffix is cosme
 
 Either:
 
-- **Actions → Release Prepare** on the `beta` branch → run with `channel = beta` and a bump type (`patch`/`minor`/`major`). The bump type applies to the base version when starting a new beta line; subsequent betas keep the base and increment `N` (derived from existing `vX.Y.Z-beta.*` tags).
-- Or push a commit to `beta` titled `release(minor-beta): ...` (also `patch-beta`, `major-beta`).
+- **Actions → Release Prepare** on `master` (or `beta`) → run with `channel = beta` and a bump type (`patch`/`minor`/`major`). The bump type applies to the base version when starting a new beta line; subsequent betas keep the base and increment `N` (derived from existing `vX.Y.Z-beta.*` tags).
+- Or push a commit to `master` (or `beta`) titled `release(minor-beta): ...` (also `patch-beta`, `major-beta`).
 
-Then merge the generated `release/vX.Y.Z-beta.N` PR into `beta`. The publish pipeline will:
+Then merge the generated `release/vX.Y.Z-beta.N` PR into `master` (or `beta`). The publish pipeline will:
 
 - Build, sign, and notarize the DMG exactly like stable
 - Create the GitHub Release with **prerelease = true** (the "latest" pointer stays on stable)
 - Add a `<sparkle:channel>beta</sparkle:channel>` item to `appcast.xml`
 - **Skip** the Homebrew cask and README install-URL updates
 - Send the Discord notification prefixed with `[Beta]`
-- Commit release metadata to `beta` and mirror the updated canonical `appcast.xml` to `master`, where the Sparkle feed is served
+- Commit release metadata to `master` (or to `beta` and mirror to `master`)
 
 > **Note:** merge or close a beta release PR before dispatching the next one — two open prepare runs bump from the same pbxproj state and would collide.
 
@@ -132,7 +132,7 @@ Then merge the generated `release/vX.Y.Z-beta.N` PR into `beta`. The publish pip
 
 Promotion is an ordinary stable release — a full rebuild from master HEAD (the version string is baked into the signed binary, so beta artifacts cannot be re-tagged):
 
-1. Merge the validated `beta` branch into `master`, then ensure `master` contains exactly what should ship (no unwanted commits).
+1. Ensure `master` contains exactly what should ship (no unwanted commits).
 2. **Actions → Release Prepare** on `master` → run with `channel = stable`. When the current version is a beta, the `-beta.N` suffix is stripped (bump type is ignored) → version `X.Y.Z`.
 3. Review the `release/vX.Y.Z` PR into `master` — the changelog spans everything since the **last stable tag**, so all beta-tested commits are included. Merge.
 4. The publish pipeline runs the full stable path: `prerelease = false`, untagged appcast item, cask + README updated, Discord notify without `[Beta]`.

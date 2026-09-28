@@ -48,11 +48,7 @@ jobs:
           set -euo pipefail
 
           case "$BRANCH_NAME" in
-            master)
-              EXPECTED_CHANNEL=stable
-              ;;
-            beta)
-              EXPECTED_CHANNEL=beta
+            master|beta)
               ;;
             *)
               echo "::error::Release preparation must run from master or beta, got '$BRANCH_NAME'"
@@ -63,26 +59,23 @@ jobs:
           echo "target_branch=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
 
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-            if [ "$INPUT_CHANNEL" != "$EXPECTED_CHANNEL" ]; then
-              echo "::error::The $BRANCH_NAME branch only accepts the $EXPECTED_CHANNEL release channel, got '$INPUT_CHANNEL'"
+            if [ "$BRANCH_NAME" = "beta" ] && [ "$INPUT_CHANNEL" != "beta" ]; then
+              echo "::error::The beta branch only accepts the beta release channel, got '$INPUT_CHANNEL'"
               exit 1
             fi
             echo "should_release=true" >> "$GITHUB_OUTPUT"
             echo "version_type=$INPUT_VERSION_TYPE" >> "$GITHUB_OUTPUT"
             echo "channel=$INPUT_CHANNEL" >> "$GITHUB_OUTPUT"
           elif [ "$EVENT_NAME" = "push" ]; then
-            if [ "$BRANCH_NAME" = "beta" ]; then
-              RELEASE_PATTERN='^release\((patch|minor|major)-beta\):'
-              TYPE_PATTERN='^release\((patch|minor|major)-beta\):.*'
+            if printf '%s\n' "$COMMIT_MSG" | grep -qE '^release\((patch|minor|major)-beta\):'; then
+              TYPE=$(printf '%s\n' "$COMMIT_MSG" | sed -nE 's/^release\((patch|minor|major)-beta\):.*/\1/p' | head -n 1)
               CHANNEL=beta
-            else
-              RELEASE_PATTERN='^release\((patch|minor|major)\):'
-              TYPE_PATTERN='^release\((patch|minor|major)\):.*'
+              echo "should_release=true" >> "$GITHUB_OUTPUT"
+              echo "version_type=$TYPE" >> "$GITHUB_OUTPUT"
+              echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+            elif [ "$BRANCH_NAME" = "master" ] && printf '%s\n' "$COMMIT_MSG" | grep -qE '^release\((patch|minor|major)\):'; then
+              TYPE=$(printf '%s\n' "$COMMIT_MSG" | sed -nE 's/^release\((patch|minor|major)\):.*/\1/p' | head -n 1)
               CHANNEL=stable
-            fi
-
-            if printf '%s\n' "$COMMIT_MSG" | grep -qE "$RELEASE_PATTERN"; then
-              TYPE=$(printf '%s\n' "$COMMIT_MSG" | sed -nE "s/$TYPE_PATTERN/\\1/p" | head -n 1)
               echo "should_release=true" >> "$GITHUB_OUTPUT"
               echo "version_type=$TYPE" >> "$GITHUB_OUTPUT"
               echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"

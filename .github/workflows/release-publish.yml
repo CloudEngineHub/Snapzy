@@ -55,11 +55,10 @@ jobs:
           echo "target_branch=$TARGET_BRANCH" >> "$GITHUB_OUTPUT"
 
           case "$TARGET_BRANCH:$IS_BETA" in
-            master:false|beta:true)
+            master:false|master:true|beta:true)
               ;;
             *)
               echo "::error::Release channel does not match target branch: v${VERSION} -> ${TARGET_BRANCH}"
-              echo "::error::Stable releases must target master; beta releases must target beta."
               exit 1
               ;;
           esac
@@ -709,7 +708,7 @@ jobs:
           fi
 
       - name: Sync beta appcast to stable feed
-        if: steps.version.outputs.is_beta == 'true'
+        if: steps.version.outputs.is_beta == 'true' && steps.version.outputs.target_branch != 'master'
         env:
           VERSION: ${{ steps.version.outputs.version }}
           APPCAST_SOURCE: ${{ github.workspace }}/appcast.xml
