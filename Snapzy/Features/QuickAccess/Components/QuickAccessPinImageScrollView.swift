@@ -69,6 +69,7 @@ final class QuickAccessPinImageScrollView: NSScrollView {
   private var requestedMagnification: CGFloat = 1
   private var requestedPanOffset: CGPoint = .zero
   private var stateApplicationDepth = 0
+  private var pendingFocalAnchor: CGPoint?
   private var boundsObserver: NSObjectProtocol?
 
   override init(frame frameRect: NSRect) {
@@ -162,6 +163,12 @@ final class QuickAccessPinImageScrollView: NSScrollView {
   func scrollAction(for event: NSEvent) -> ScrollAction {
     let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
     guard !isLockedProvider() else { return .reject("locked") }
+    if modifiers == .command {
+      guard abs(event.scrollingDeltaY) > abs(event.scrollingDeltaX), abs(event.scrollingDeltaY) > 0 else {
+        return .reject("horizontalOrZeroDelta")
+      }
+      return .magnify
+    }
     guard modifiers.isEmpty else { return .reject("modifiers") }
     if zoomMode == .windowFollowsImage {
       guard abs(event.scrollingDeltaY) > abs(event.scrollingDeltaX), abs(event.scrollingDeltaY) > 0 else {
@@ -270,9 +277,15 @@ final class QuickAccessPinImageScrollView: NSScrollView {
 
     performStateApplication {
       if zoomChanged {
-        let visibleRect = documentView?.visibleRect ?? imageView.bounds
-        let viewportCenter = NSPoint(x: visibleRect.midX, y: visibleRect.midY)
-        setMagnification(clampedMagnification, centeredAt: viewportCenter)
+        let anchor: CGPoint
+        if let focal = pendingFocalAnchor {
+          anchor = focal
+          pendingFocalAnchor = nil
+        } else {
+          let visibleRect = documentView?.visibleRect ?? imageView.bounds
+          anchor = CGPoint(x: visibleRect.midX, y: visibleRect.midY)
+        }
+        setMagnification(clampedMagnification, centeredAt: anchor)
       }
 
       let visibleSize = CGSize(
@@ -301,21 +314,68 @@ final class QuickAccessPinImageScrollView: NSScrollView {
     let before = magnification
     guard target != before else { return }
 
+    pendingFocalAnchor = point
     performStateApplication {
       setMagnification(target, centeredAt: point)
     }
     publishViewportChange()
     if zoomMode == .windowFollowsImage {
-      let fraction = CGPoint(x: bounds.width > 0 ? windowPoint.x / bounds.width : 0.5, y: bounds.height > 0 ? windowPoint.y / bounds.height : 0.5)
-      let displaySize = QuickAccessPinWindowState.windowFollowsImageDisplaySize(
-        baseSize: configuredImageSize,
-        zoomFactor: target
-      )
-      stateResizeRequest?(displaySize, fraction)
+      if window == nil {
+        stateResizeRequest?(displaySizeForZoom(target), liveAnchorFraction(windowPoint: windowPoint))
+      } else {
+        performWindowResizingZoom(target: target, contentPoint: point, windowPoint: windowPoint)
+      }
     }
   }
 
+  private func performWindowResizingZoom(target: CGFloat, contentPoint: CGPoint, windowPoint: CGPoint) {
+    guard let window else { return }
+    let cursorBase = convert(windowPoint, to: nil)
+    let cursorScreen = window.convertToScreen(NSRect(origin: cursorBase, size: .zero)).origin
+    let documentAnchor = imageView.convert(cursorBase, from: nil)
+
+    stateResizeRequest?(displaySizeForZoom(target), liveAnchorFraction(windowPoint: windowPoint))
+    window.contentView?.layoutSubtreeIfNeeded()
+    reanchor(imagePoint: documentAnchor, atScreenPoint: cursorScreen)
+  }
+
+  private func reanchor(imagePoint: CGPoint, atScreenPoint cursorScreen: CGPoint) {
+    guard let window else { return }
+    let cursorBase = window.convertFromScreen(NSRect(origin: cursorScreen, size: .zero)).origin
+    let currentImagePoint = imageView.convert(cursorBase, from: nil)
+    let delta = NSPoint(
+      x: currentImagePoint.x - imagePoint.x,
+      y: currentImagePoint.y - imagePoint.y
+    )
+    guard abs(delta.x) > 0.001 || abs(delta.y) > 0.001 else { return }
+    let origin = contentView.bounds.origin
+    performStateApplication {
+      contentView.setBoundsOrigin(NSPoint(x: origin.x + delta.x, y: origin.y + delta.y))
+      reflectScrolledClipView(contentView)
+    }
+    publishViewportChange()
+  }
+
   var stateResizeRequest: ((CGSize, CGPoint) -> Void)?
+
+  private func displaySizeForZoom(_ target: CGFloat) -> CGSize {
+    QuickAccessPinWindowState.windowFollowsImageDisplaySize(
+      baseSize: configuredImageSize,
+      zoomFactor: target
+    )
+  }
+
+  private func liveAnchorFraction(windowPoint: CGPoint) -> CGPoint {
+    guard let window else {
+      return CGPoint(x: bounds.width > 0 ? windowPoint.x / bounds.width : 0.5, y: bounds.height > 0 ? windowPoint.y / bounds.height : 0.5)
+    }
+    let pointInWindow = convert(windowPoint, to: nil)
+    let frame = window.frame
+    return CGPoint(
+      x: frame.width > 0 ? pointInWindow.x / frame.width : 0.5,
+      y: frame.height > 0 ? pointInWindow.y / frame.height : 0.5
+    )
+  }
 
   private func publishViewportChange() {
     requestedMagnification = magnification

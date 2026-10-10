@@ -985,6 +985,89 @@ final class QuickAccessCoreTests: XCTestCase {
     XCTAssertEqual(state.zoomFactor, 1.5, accuracy: 0.001)
   }
 
+  func testQuickAccessPinImageScrollView_windowResizingZoomKeepsCursorDocumentPointAcrossInOutCycle() throws {
+    let image = NSImage(size: CGSize(width: 400, height: 300))
+    let baseSize = CGSize(width: 400, height: 300)
+    let state = QuickAccessPinWindowState(
+      id: UUID(),
+      url: URL(fileURLWithPath: "/tmp/pinned.png"),
+      image: image,
+      thumbnail: image,
+      baseSize: baseSize,
+      zoomMode: .windowFollowsImage
+    )
+    Self.retainedPinWindowStates.append(state)
+    let scrollView = QuickAccessPinImageScrollView(frame: NSRect(origin: .zero, size: baseSize))
+    scrollView.isLockedProvider = { state.isLocked }
+    scrollView.onViewportChange = { magnification, panOffset in
+      state.updateViewport(magnification: magnification, panOffset: panOffset)
+    }
+    scrollView.update(
+      image: image,
+      viewportSize: baseSize,
+      imageSize: baseSize,
+      zoomMode: .windowFollowsImage,
+      magnification: 1,
+      panOffset: .zero
+    )
+
+    let initialFrame = NSRect(x: 130, y: 270, width: baseSize.width, height: baseSize.height)
+    let window = QuickAccessPinWindow(
+      contentRect: initialFrame,
+      state: state
+    )
+    defer {
+      window.contentView = nil
+      window.close()
+    }
+    window.contentView = scrollView
+
+    let cursorViewPoint = NSPoint(x: 300, y: 200)
+    let documentView = try XCTUnwrap(scrollView.documentView)
+    let cursorBasePoint = scrollView.convert(cursorViewPoint, to: nil)
+    let cursorScreenRect = window.convertToScreen(NSRect(origin: cursorBasePoint, size: .zero))
+    let cursorScreenPoint = cursorScreenRect.origin
+    let documentPointBefore = documentView.convert(cursorBasePoint, from: nil)
+
+    scrollView.stateResizeRequest = { [weak window] size, fraction in
+      guard let window else { return }
+      let resized = QuickAccessPinWindowSizing.resizedFrame(
+        window.frame,
+        to: size,
+        preservingAnchorFraction: fraction
+      )
+      window.setFrame(resized, display: false)
+      window.contentView?.frame = NSRect(origin: .zero, size: size)
+    }
+
+    func cursorBaseUnderScreenPoint() -> NSPoint {
+      window.convertFromScreen(NSRect(origin: cursorScreenPoint, size: .zero)).origin
+    }
+    let documentPointUnderCursorAfter = { () -> NSPoint in
+      documentView.convert(cursorBaseUnderScreenPoint(), from: nil)
+    }
+
+    scrollView.applyMagnificationDelta(0.5, centeredAtContentPoint: cursorViewPoint, windowPoint: cursorViewPoint)
+    XCTAssertEqual(scrollView.magnification, 1.5, accuracy: 0.001)
+    XCTAssertEqual(window.frame.width, 600, accuracy: 1.0)
+    let documentPointDuring = documentPointUnderCursorAfter()
+    XCTAssertEqual(documentPointDuring.x, documentPointBefore.x, accuracy: 2.0)
+    XCTAssertEqual(documentPointDuring.y, documentPointBefore.y, accuracy: 2.0)
+
+    let cursorViewPointAfterReturn = scrollView.convert(cursorBaseUnderScreenPoint(), from: nil)
+    scrollView.applyMagnificationDelta(-0.33333, centeredAtContentPoint: cursorViewPointAfterReturn, windowPoint: cursorViewPointAfterReturn)
+    XCTAssertEqual(scrollView.magnification, 1, accuracy: 0.001)
+    XCTAssertEqual(window.frame.width, initialFrame.width, accuracy: 1.0)
+    XCTAssertEqual(window.frame.height, initialFrame.height, accuracy: 1.0)
+    XCTAssertEqual(window.frame.minX, initialFrame.minX, accuracy: 1.0)
+    XCTAssertEqual(window.frame.minY, initialFrame.minY, accuracy: 1.0)
+    XCTAssertEqual(scrollView.currentPanOffset.x, 0, accuracy: 1.0)
+    XCTAssertEqual(scrollView.currentPanOffset.y, 0, accuracy: 1.0)
+    let documentPointAfter = documentPointUnderCursorAfter()
+    XCTAssertEqual(documentPointAfter.x, documentPointBefore.x, accuracy: 2.0)
+    XCTAssertEqual(documentPointAfter.y, documentPointBefore.y, accuracy: 2.0)
+  }
+
   func testQuickAccessPinImageZoom_resizePreservesOffCenterFocalAnchor() throws {
     let image = NSImage(size: CGSize(width: 400, height: 300))
     let scrollView = QuickAccessPinImageScrollView(frame: NSRect(origin: .zero, size: image.size))
@@ -1033,6 +1116,46 @@ final class QuickAccessCoreTests: XCTestCase {
       resizedFrame.minY + resizedFrame.height * fraction.y,
       accuracy: 0.001
     )
+  }
+
+  func testQuickAccessPinWindow_routesWindowMagnifyToImageScrollView() {
+    let image = NSImage(size: CGSize(width: 400, height: 300))
+    let state = QuickAccessPinWindowState(
+      id: UUID(),
+      url: URL(fileURLWithPath: "/tmp/pinned.png"),
+      image: image,
+      thumbnail: image,
+      baseSize: CGSize(width: 400, height: 300),
+      zoomMode: .fixedViewport
+    )
+    Self.retainedPinWindowStates.append(state)
+    let scrollView = QuickAccessPinImageScrollView(frame: NSRect(origin: .zero, size: state.baseSize))
+    scrollView.isLockedProvider = { state.isLocked }
+    scrollView.onViewportChange = { magnification, panOffset in
+      state.updateViewport(magnification: magnification, panOffset: panOffset)
+    }
+    scrollView.update(
+      image: image,
+      viewportSize: state.baseSize,
+      imageSize: state.baseSize,
+      zoomMode: .fixedViewport,
+      magnification: 1,
+      panOffset: .zero
+    )
+    let window = QuickAccessPinWindow(
+      contentRect: NSRect(x: 0, y: 0, width: 400, height: 300),
+      state: state
+    )
+    defer { window.close() }
+    window.contentView = scrollView
+    window.contentView?.layoutSubtreeIfNeeded()
+
+    window.sendEvent(QuickAccessPinMockMagnifyEvent(delta: 0.5, location: NSPoint(x: 200, y: 150)))
+    XCTAssertEqual(state.zoomFactor, 1.5, accuracy: 0.001)
+
+    state.isLocked = true
+    window.sendEvent(QuickAccessPinMockMagnifyEvent(delta: 0.5, location: NSPoint(x: 200, y: 150)))
+    XCTAssertEqual(state.zoomFactor, 1.5, accuracy: 0.001)
   }
 
   func testQuickAccessPinWindow_lockedModeIsClickThroughExceptUnlockButton() {
@@ -1105,8 +1228,7 @@ final class QuickAccessCoreTests: XCTestCase {
     let zoomBeforeRejectedScrolls = state.zoomFactor
     let panBeforeRejectedScrolls = state.panOffset
     for modifier in [
-      NSEvent.ModifierFlags.command,
-      .shift,
+      NSEvent.ModifierFlags.shift,
       .option,
       .control,
     ] {
@@ -1118,6 +1240,24 @@ final class QuickAccessCoreTests: XCTestCase {
       XCTAssertEqual(scrollView.scrollAction(for: event), .reject("modifiers"))
       scrollView.scrollWheel(with: event)
     }
+
+    let commandScrollEvent = QuickAccessPinMockScrollWheelEvent(
+      deltaY: 10,
+      modifierFlags: [.command],
+      hasPreciseDeltas: true
+    )
+    XCTAssertEqual(scrollView.scrollAction(for: commandScrollEvent), .magnify)
+    scrollView.scrollWheel(with: commandScrollEvent)
+    XCTAssertEqual(state.zoomFactor, zoomBeforeRejectedScrolls * 0.9, accuracy: 0.001)
+
+    let commandHorizontalScrollEvent = QuickAccessPinMockScrollWheelEvent(
+      deltaX: 10,
+      deltaY: 0,
+      modifierFlags: [.command],
+      hasPreciseDeltas: true
+    )
+    XCTAssertEqual(scrollView.scrollAction(for: commandHorizontalScrollEvent), .reject("horizontalOrZeroDelta"))
+
     let coarseEvent = QuickAccessPinMockScrollWheelEvent(
       deltaY: 10,
       hasPreciseDeltas: false
@@ -1133,7 +1273,7 @@ final class QuickAccessCoreTests: XCTestCase {
     XCTAssertEqual(scrollView.scrollAction(for: lockedEvent), .reject("locked"))
     scrollView.scrollWheel(with: lockedEvent)
 
-    XCTAssertEqual(state.zoomFactor, zoomBeforeRejectedScrolls, accuracy: 0.001)
+    XCTAssertEqual(state.zoomFactor, zoomBeforeRejectedScrolls * 0.9, accuracy: 0.001)
     XCTAssertEqual(state.panOffset, panBeforeRejectedScrolls)
   }
 
