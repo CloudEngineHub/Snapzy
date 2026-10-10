@@ -376,6 +376,17 @@ enum SnapzyConfigurationImporter {
       }
     }
 
+    if let zoomModeString = reader.string("quick_access", "pin_zoom_mode") {
+      guard let mode = QuickAccessPinZoomMode(rawValue: zoomModeString) else {
+        reader.error("quick_access.pin_zoom_mode must be fixedViewport or windowFollowsImage")
+        return
+      }
+      mutations.append {
+        QuickAccessPinZoomModeStore.shared.setMode(mode)
+        QuickAccessPinWindowManager.shared.setPinZoomMode(mode)
+      }
+    }
+
     if let actionStr = reader.string("quick_access", "swipe_left_action") {
       if actionStr == "none" {
         mutations.append {

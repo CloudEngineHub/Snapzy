@@ -126,6 +126,7 @@ enum SnapzyConfigurationDefaultDocument {
     writer.value("two_finger_swipe_to_dismiss", true)
     writer.value("swipe_sensitivity", 1.0)
     writer.value("trackpad_swipe_mode", QuickAccessTrackpadSwipeMode.inverted.rawValue)
+    writer.value("pin_zoom_mode", QuickAccessPinZoomMode.defaultMode.rawValue)
     writer.value("swipe_left_action", "dismiss")
     writer.value("swipe_right_action", "dismiss")
     writer.value("hide_card_when_window_open", true)

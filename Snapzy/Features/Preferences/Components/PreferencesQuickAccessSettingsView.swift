@@ -7,9 +7,19 @@
 
 import SwiftUI
 
+extension QuickAccessPinZoomMode {
+  var title: String {
+    switch self {
+    case .windowFollowsImage: L10n.PreferencesQuickAccess.pinZoomModeWindow
+    case .fixedViewport: L10n.PreferencesQuickAccess.pinZoomModeFixed
+    }
+  }
+}
+
 struct QuickAccessSettingsView: View {
   @ObservedObject private var manager = QuickAccessManager.shared
   @ObservedObject private var trackpadSwipeModeStore = QuickAccessTrackpadSwipeModeStore.shared
+  @ObservedObject private var pinZoomModeStore = QuickAccessPinZoomModeStore.shared
   @AppStorage(PreferencesKeys.quickAccessPlaySounds) private var playSounds = true
 
   @State private var positionIsLeft: Bool = false
@@ -17,6 +27,30 @@ struct QuickAccessSettingsView: View {
   var body: some View {
     Form {
       QuickAccessActionCustomizationView(manager: manager)
+
+      Section(L10n.PreferencesQuickAccess.pinZoomSection) {
+        PinZoomModeComparisonPreview(selectedMode: pinZoomModeStore.mode)
+
+        SettingRow(
+          icon: "plus.magnifyingglass",
+          title: L10n.PreferencesQuickAccess.pinZoomTitle,
+          description: L10n.PreferencesQuickAccess.pinZoomDescription
+        ) {
+          Picker("", selection: Binding(
+            get: { pinZoomModeStore.mode },
+            set: { mode in
+              pinZoomModeStore.setMode(mode)
+              QuickAccessPinWindowManager.shared.setPinZoomMode(mode)
+            }
+          )) {
+            ForEach(QuickAccessPinZoomMode.allCases) { mode in Text(mode.title).tag(mode) }
+          }
+          .labelsHidden()
+          .pickerStyle(.menu)
+          .fixedSize()
+          .frame(width: 190, alignment: .trailing)
+        }
+      }
 
       Section(L10n.PreferencesQuickAccess.positionSection) {
         SettingRow(icon: "rectangle.leadinghalf.inset.filled", title: L10n.PreferencesQuickAccess.screenEdgeTitle, description: L10n.PreferencesQuickAccess.screenEdgeDescription) {

@@ -335,6 +335,8 @@ final class SnapzyConfigurationImporterTests: XCTestCase {
     let originalLeftAction = QuickAccessSwipeActionStore.shared.swipeLeftAction
     let originalRightAction = QuickAccessSwipeActionStore.shared.swipeRightAction
     let originalTrackpadMode = QuickAccessTrackpadSwipeModeStore.shared.mode
+    let pinZoomModeStore = QuickAccessPinZoomModeStore.shared
+    let originalPinZoomMode = pinZoomModeStore.mode
     
     defer {
       manager.hideCardWhenWindowOpen = originalHide
@@ -342,6 +344,8 @@ final class SnapzyConfigurationImporterTests: XCTestCase {
       QuickAccessSwipeActionStore.shared.setAction(.left, action: originalLeftAction)
       QuickAccessSwipeActionStore.shared.setAction(.right, action: originalRightAction)
       QuickAccessTrackpadSwipeModeStore.shared.setMode(originalTrackpadMode)
+      pinZoomModeStore.setMode(originalPinZoomMode)
+      QuickAccessPinWindowManager.shared.setPinZoomMode(originalPinZoomMode)
     }
 
     let source = """
@@ -368,6 +372,7 @@ final class SnapzyConfigurationImporterTests: XCTestCase {
     [quick_access]
     play_sounds = false
     trackpad_swipe_mode = "natural"
+    pin_zoom_mode = "windowFollowsImage"
     swipe_left_action = "pinToScreen"
     swipe_right_action = "none"
     hide_card_when_window_open = false
@@ -399,6 +404,7 @@ final class SnapzyConfigurationImporterTests: XCTestCase {
     // quick access
     XCTAssertEqual(defaults.object(forKey: PreferencesKeys.quickAccessPlaySounds) as? Bool, false)
     XCTAssertEqual(QuickAccessTrackpadSwipeModeStore.shared.mode, .natural)
+    XCTAssertEqual(pinZoomModeStore.mode, .windowFollowsImage)
     XCTAssertEqual(QuickAccessSwipeActionStore.shared.swipeLeftAction, .pinToScreen)
     XCTAssertNil(QuickAccessSwipeActionStore.shared.swipeRightAction)
     XCTAssertFalse(manager.hideCardWhenWindowOpen)
@@ -429,6 +435,14 @@ final class SnapzyConfigurationImporterTests: XCTestCase {
     """
     let result1 = SnapzyConfigurationImporter.importTOML(sourceInvalidTrackpad, defaults: defaults)
     XCTAssertTrue(result1.hasErrors)
+
+    let sourceInvalidPinZoomMode = """
+    schema_version = 1
+    [quick_access]
+    pin_zoom_mode = "invalid_mode"
+    """
+    let resultPinZoomMode = SnapzyConfigurationImporter.importTOML(sourceInvalidPinZoomMode, defaults: defaults)
+    XCTAssertTrue(resultPinZoomMode.hasErrors)
 
     let sourceInvalidLeftAction = """
     schema_version = 1

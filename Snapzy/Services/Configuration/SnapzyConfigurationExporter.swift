@@ -155,6 +155,7 @@ enum SnapzyConfigurationExporter {
     writer.value("two_finger_swipe_to_dismiss", manager.twoFingerSwipeToDismissEnabled)
     writer.value("swipe_sensitivity", manager.swipeSensitivity)
     writer.value("trackpad_swipe_mode", QuickAccessTrackpadSwipeModeStore.shared.mode.rawValue)
+    writer.value("pin_zoom_mode", QuickAccessPinZoomModeStore.shared.mode.rawValue)
     writer.value("swipe_left_action", QuickAccessSwipeActionStore.shared.swipeLeftAction?.rawValue ?? "none")
     writer.value("swipe_right_action", QuickAccessSwipeActionStore.shared.swipeRightAction?.rawValue ?? "none")
     writer.value("hide_card_when_window_open", manager.hideCardWhenWindowOpen)

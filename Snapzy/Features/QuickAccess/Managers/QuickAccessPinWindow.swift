@@ -98,12 +98,8 @@ struct PinWindowDragDecider: Equatable {
 @MainActor
 final class QuickAccessPinWindow: NSPanel {
   private static let pinnedWindowLevel = NSWindow.Level(rawValue: NSWindow.Level.floating.rawValue + 2)
-  internal static let scrollZoomSensitivityPrecise: CGFloat = 0.0015
-  internal static let scrollZoomSensitivityCoarse: CGFloat = 0.02
-  internal static let magnificationZoomSensitivity: CGFloat = 0.2
 
   var onEscapeRequested: (() -> Void)?
-  var onZoomStepRequested: ((CGFloat) -> Void)?
 
   private weak var pinState: QuickAccessPinWindowState?
   private var localMouseMonitor: Any?
@@ -141,8 +137,8 @@ final class QuickAccessPinWindow: NSPanel {
 
   override func sendEvent(_ event: NSEvent) {
     switch event.type {
-    case .scrollWheel where handleScrollZoomIfNeeded(event):
-      return
+    case .magnify, .scrollWheel:
+      super.sendEvent(event)
     case .leftMouseDown:
       beginBackgroundDragIfEligible(with: event)
       super.sendEvent(event)
@@ -186,12 +182,15 @@ final class QuickAccessPinWindow: NSPanel {
   }
 
   func updateMousePassthrough() {
+    updateMousePassthrough(at: NSEvent.mouseLocation)
+  }
+
+  func updateMousePassthrough(at mouseLocation: NSPoint) {
     guard let pinState else {
       ignoresMouseEvents = false
       return
     }
 
-    let mouseLocation = NSEvent.mouseLocation
     let isInside = frame.contains(mouseLocation)
     pinState.isMouseInside = isInside
 
@@ -226,7 +225,10 @@ final class QuickAccessPinWindow: NSPanel {
     ignoresMouseEvents = false
     applyCornerRadius()
     level = Self.pinnedWindowLevel
-    becomesKeyOnlyIfNeeded = false
+    // AppKit may key the panel from a hit-tested view only when that view opts
+    // in. The existing pointer-hover path can also key this nonactivating pin
+    // directly, without activating the Snapzy application.
+    becomesKeyOnlyIfNeeded = true
   }
 
   private var lockButtonScreenRect: NSRect {
@@ -418,57 +420,4 @@ final class QuickAccessPinWindow: NSPanel {
     return true
   }
 
-  private func handleScrollZoomIfNeeded(_ event: NSEvent) -> Bool {
-    guard let step = Self.scrollZoomStep(
-      scrollingDeltaX: event.scrollingDeltaX,
-      scrollingDeltaY: event.scrollingDeltaY,
-      hasPreciseScrollingDeltas: event.hasPreciseScrollingDeltas,
-      isLocked: pinState?.isLocked == true
-    ), let onZoomStepRequested else { return false }
-
-    onZoomStepRequested(step)
-    return true
-  }
-
-
-  @discardableResult
-  func requestMagnifyZoom(magnification: CGFloat) -> Bool {
-    guard let step = Self.magnifyZoomStep(
-      magnification: magnification,
-      isLocked: pinState?.isLocked == true
-    ), let onZoomStepRequested else { return false }
-
-    onZoomStepRequested(step)
-    return true
-  }
-
-  static func scrollZoomStep(
-    scrollingDeltaX deltaX: CGFloat = 0,
-    scrollingDeltaY deltaY: CGFloat,
-    hasPreciseScrollingDeltas: Bool,
-    isLocked: Bool
-  ) -> CGFloat? {
-    guard !isLocked else { return nil }
-
-    let magnitude = sqrt(deltaX * deltaX + deltaY * deltaY)
-    guard magnitude.isFinite, magnitude != 0 else { return nil }
-
-    let sign: CGFloat
-    if deltaY != 0 {
-      sign = deltaY > 0 ? 1.0 : -1.0
-    } else {
-      sign = deltaX > 0 ? 1.0 : -1.0
-    }
-
-    let combinedDelta = magnitude * sign
-    let sensitivity = hasPreciseScrollingDeltas ? scrollZoomSensitivityPrecise : scrollZoomSensitivityCoarse
-    return combinedDelta * sensitivity
-  }
-
-  static func magnifyZoomStep(magnification: CGFloat, isLocked: Bool) -> CGFloat? {
-    guard !isLocked,
-          magnification.isFinite,
-          magnification != 0 else { return nil }
-    return magnification * magnificationZoomSensitivity
-  }
 }
