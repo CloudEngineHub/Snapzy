@@ -29,27 +29,13 @@ struct QuickAccessSettingsView: View {
       QuickAccessActionCustomizationView(manager: manager)
 
       Section(L10n.PreferencesQuickAccess.pinZoomSection) {
-        PinZoomModeComparisonPreview(selectedMode: pinZoomModeStore.mode)
-
-        SettingRow(
-          icon: "plus.magnifyingglass",
-          title: L10n.PreferencesQuickAccess.pinZoomTitle,
-          description: L10n.PreferencesQuickAccess.pinZoomDescription
-        ) {
-          Picker("", selection: Binding(
-            get: { pinZoomModeStore.mode },
-            set: { mode in
-              pinZoomModeStore.setMode(mode)
-              QuickAccessPinWindowManager.shared.setPinZoomMode(mode)
-            }
-          )) {
-            ForEach(QuickAccessPinZoomMode.allCases) { mode in Text(mode.title).tag(mode) }
+        PinZoomModeComparisonPreview(
+          selectedMode: pinZoomModeStore.mode,
+          onSelect: { mode in
+            pinZoomModeStore.setMode(mode)
+            QuickAccessPinWindowManager.shared.setPinZoomMode(mode)
           }
-          .labelsHidden()
-          .pickerStyle(.menu)
-          .fixedSize()
-          .frame(width: 190, alignment: .trailing)
-        }
+        )
       }
 
       Section(L10n.PreferencesQuickAccess.positionSection) {

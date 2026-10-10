@@ -76,7 +76,7 @@ Segmented into four panes (`CaptureSettingsPane`): General / Screenshot / Record
 ### Quick Access (`PreferencesQuickAccessSettingsView.swift`)
 
 - **Actions**: `QuickAccessActionCustomizationView` — action enable/order/slot assignment with live preview card (`PreferencesQuickAccessPreviewCard`); keys `quickAccess.actions.*`, `quickAccess.swipe.action.*`.
-- **Pinned Image**: zoom mode picker (`quickAccess.pin.zoom.mode`) selects fixed viewport (default) or window-follows-image; an animated side-by-side preview shows how each mode changes the pin window and image.
+- **Pinned Image**: clickable tiles — selecting `Resize window with image` (default `fixedViewport` alternative `windowFollowsImage`) directly on the animated side-by-side preview applies the mode to pinned windows; key `quickAccess.pin.zoom.mode`.
 - **Position**: screen edge left/right (`floatingScreenshot.position`).
 - **Appearance**: overlay size slider 0.75–1.5 (`floatingScreenshot.overlayScale`).
 - **Behaviors**: floating overlay enable (`floatingScreenshot.enabled`), Auto-Close toggle + 3–30 s slider (default 10, `floatingScreenshot.autoDismiss*`) + Pause on Hover, Hide Card When Window Open (`quickAccess.hideCardWhenWindowOpen`), Animation Style (`quickAccess.animationStyle`), Sound Effects (`quickAccess.playSounds`), Drag & Drop (`floatingScreenshot.dragDropEnabled`), Two-Finger Swipe to Dismiss + sensitivity 0.5–3.0 (`floatingScreenshot.twoFingerSwipe*`).

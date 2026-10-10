@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PinZoomModeComparisonPreview: View {
   let selectedMode: QuickAccessPinZoomMode
+  let onSelect: (QuickAccessPinZoomMode) -> Void
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @State private var stage = 0
@@ -20,7 +21,10 @@ struct PinZoomModeComparisonPreview: View {
   private func demo(mode: QuickAccessPinZoomMode) -> some View {
     let isSelected = selectedMode == mode
 
-    return ZStack {
+    return Button {
+      onSelect(mode)
+    } label: {
+      ZStack {
       PinZoomDiagram(mode: mode, stage: stage, reduceMotion: reduceMotion)
         .frame(height: 152)
         .frame(maxWidth: .infinity)
@@ -59,6 +63,11 @@ struct PinZoomModeComparisonPreview: View {
       Radius.rect(Radius.tile)
         .stroke(isSelected ? Color.accentColor : Color.primary.opacity(0.08), lineWidth: isSelected ? 2 : 1)
     )
+    }
+    .buttonStyle(.plain)
+    .accessibilityElement(children: .combine)
+    .accessibilityValue(mode.title)
+    .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
   }
 
   @MainActor private func play() async {
