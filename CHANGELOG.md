@@ -4,6 +4,15 @@ All notable changes to Snapzy will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.1.0-beta.5] - 2026-10-13
+
+### Features
+- Added delayed fullscreen screenshot (#638) (09bb7929)
+
+### Contributors
+- @gengjiawen
+- @github-actions[bot]
+
 ## [2.1.0-beta.4] - 2026-10-13
 
 ### Features
