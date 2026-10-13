@@ -4,6 +4,23 @@ All notable changes to Snapzy will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.1.0-beta.4] - 2026-10-13
+
+### Features
+- Added configuration for opening Finder after saving optional (#631) (d0d9816c)
+- Added attached arrows to counter annotations (#626) (80be6dc0)
+
+### Bug Fixes
+- Fixed capture remapped and consumed keystrokes (#539) (d74508b0)
+- Sync include_window_shadow with config.toml (#526) (#630) (5dd42ee2)
+- Fixed keystroke overlay above elevated windows (#548) (4f3d326b)
+
+### Contributors
+- @github-actions[bot]
+- @nandan-varma
+- @qeude
+- @thanhthai3010
+
 ## [2.1.0-beta.3] - 2026-10-10
 
 ### Bug Fixes
