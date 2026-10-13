@@ -66,4 +66,26 @@ final class CaptureDelayTests: XCTestCase {
     XCTAssertTrue(countdown.isFinished)
     XCTAssertFalse(countdown.tick())
   }
+
+  // MARK: - CaptureDelayTarget
+
+  func testAreaTargetKeepsTheOriginalCountdownLayout() {
+    XCTAssertEqual(CaptureDelayTarget.area.logName, "delayedArea")
+    XCTAssertNil(CaptureDelayTarget.area.hudDetail)
+  }
+
+  func testFullscreenTargetNamesTheCaptureAndLabelsTheHUD() {
+    XCTAssertEqual(CaptureDelayTarget.fullscreen.logName, "delayedFullscreen")
+    XCTAssertEqual(
+      CaptureDelayTarget.fullscreen.hudDetail,
+      L10n.ScreenCapture.captureDelayFullscreenHint
+    )
+    XCTAssertFalse(CaptureDelayTarget.fullscreen.hudDetail?.isEmpty ?? true)
+  }
+
+  func testDelayedFullscreenShortcutShipsUnbound() {
+    XCTAssertEqual(GlobalShortcutKind.delayedFullscreen.configKey, "delayed_fullscreen")
+    XCTAssertFalse(GlobalShortcutKind.delayedFullscreen.isSystemConflictRelevant)
+    XCTAssertFalse(GlobalShortcutKind.delayedFullscreen.displayName.isEmpty)
+  }
 }

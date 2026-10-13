@@ -400,6 +400,8 @@ private extension KeyboardShortcutManager {
       setDeleteRecordingShortcut(config)
     case .delayedCapture:
       setDelayedCaptureShortcut(config)
+    case .delayedFullscreen:
+      setDelayedFullscreenShortcut(config)
     case .annotate:
       setAnnotateShortcut(config)
     case .videoEditor:

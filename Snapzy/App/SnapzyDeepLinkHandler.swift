@@ -57,6 +57,8 @@ struct SnapzyDeepLinkHandler {
       screenCaptureViewModel.captureRepeatArea()
     case .captureDelayed:
       screenCaptureViewModel.captureDelayed()
+    case .captureDelayedFullscreen:
+      screenCaptureViewModel.captureDelayedFullscreen()
     case .captureApplication:
       screenCaptureViewModel.captureApplication()
     case .captureActiveWindow:
@@ -114,6 +116,7 @@ enum SnapzyDeepLinkAction: Equatable {
   case captureArea
   case captureRepeatArea
   case captureDelayed
+  case captureDelayedFullscreen
   case captureApplication
   case captureActiveWindow
   case captureAreaAnnotate
@@ -149,7 +152,10 @@ enum SnapzyDeepLinkAction: Equatable {
     case "capture/repeat-area", "repeat-area", "capture-repeat-area", "screenshot/repeat-area":
       self = .captureRepeatArea
     case "capture/delayed", "delayed-capture", "capture-delayed", "screenshot/delayed":
-      self = .captureDelayed
+      self = Self.delayedCaptureAction(from: components)
+    case "capture/delayed-fullscreen", "delayed-fullscreen", "capture-delayed-fullscreen",
+      "screenshot/delayed-fullscreen":
+      self = .captureDelayedFullscreen
     case "capture/application", "capture/window", "application-capture", "window-capture", "screenshot/window":
       self = .captureApplication
     case "capture/active-window", "capture/focused-window", "active-window-capture",
@@ -200,6 +206,7 @@ enum SnapzyDeepLinkAction: Equatable {
     case .captureArea: return "captureArea"
     case .captureRepeatArea: return "captureRepeatArea"
     case .captureDelayed: return "captureDelayed"
+    case .captureDelayedFullscreen: return "captureDelayedFullscreen"
     case .captureApplication: return "captureApplication"
     case .captureActiveWindow: return "captureActiveWindow"
     case .captureAreaAnnotate: return "captureAreaAnnotate"
@@ -218,6 +225,16 @@ enum SnapzyDeepLinkAction: Equatable {
     case .openSettings(let tab): return "openSettings(\(String(describing: tab)))"
     case .openLiquidGlassPlayground: return "openLiquidGlassPlayground"
     }
+  }
+
+  /// `snapzy://capture/delayed?mode=fullscreen` captures the whole display.
+  /// Any other mode, including a missing query, keeps area selection.
+  private static func delayedCaptureAction(from components: URLComponents?) -> SnapzyDeepLinkAction {
+    let mode = components?.queryItems?
+      .first(where: { $0.name.lowercased() == "mode" })?
+      .value?
+      .lowercased()
+    return mode == "fullscreen" ? .captureDelayedFullscreen : .captureDelayed
   }
 
   private static func combineFileURLs(from components: URLComponents?) -> [URL] {

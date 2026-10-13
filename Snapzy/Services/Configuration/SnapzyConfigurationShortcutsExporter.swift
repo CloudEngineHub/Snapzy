@@ -158,6 +158,7 @@ extension GlobalShortcutKind {
     case .restartRecording: return "restart_recording"
     case .deleteRecording: return "delete_recording"
     case .delayedCapture: return "delayed_capture"
+    case .delayedFullscreen: return "delayed_fullscreen"
     case .annotate: return "annotate"
     case .videoEditor: return "video_editor"
     case .cloudUploads: return "cloud_uploads"

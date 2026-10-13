@@ -647,6 +647,11 @@ nonisolated enum L10n {
       defaultValue: "Delayed Capture",
       comment: "Action title for capturing an area after a countdown"
     )
+    static let captureDelayedFullscreen = string(
+      "action.capture-delayed-fullscreen",
+      defaultValue: "Delayed Fullscreen",
+      comment: "Action title for capturing the full screen after a countdown"
+    )
     static let captureAreaAnnotate = string(
       "action.capture-area-annotate",
       defaultValue: "Capture Markup",
@@ -745,6 +750,15 @@ nonisolated enum L10n {
         "menu.delayed-capture",
         defaultValue: "Delayed Capture (%ds)",
         comment: "Status bar menu item title for Delayed Capture. %d is the countdown length in seconds.",
+        seconds
+      )
+    }
+
+    static func delayedFullscreenCapture(_ seconds: Int) -> String {
+      format(
+        "menu.delayed-fullscreen-capture",
+        defaultValue: "Delayed Fullscreen (%ds)",
+        comment: "Status bar menu item title for Delayed Fullscreen. %d is the countdown length in seconds.",
         seconds
       )
     }
@@ -3490,7 +3504,7 @@ nonisolated enum L10n {
     )
     static let delayedCaptureDescription = string(
       "preferences-capture.delayed-capture-description",
-      defaultValue: "How long Delayed Capture waits before freezing the screen for area selection. Open menus or hover states during the countdown.",
+      defaultValue: "How long Delayed Capture waits before taking the screenshot. Open menus or hover states during the countdown.",
       comment: "Capture preferences setting description"
     )
     static func delayedCaptureSeconds(_ seconds: Int) -> String {
@@ -4206,6 +4220,11 @@ nonisolated enum L10n {
       "preferences-shortcuts.capture-delayed-description",
       defaultValue: "Count down, then select an area on a frozen screen",
       comment: "Description for delayed capture shortcut"
+    )
+    static let captureDelayedFullscreenDescription = string(
+      "preferences-shortcuts.capture-delayed-fullscreen-description",
+      defaultValue: "Count down, then capture the full screen",
+      comment: "Description for delayed fullscreen capture shortcut"
     )
     static let captureAreaAnnotateDescription = string(
       "preferences-shortcuts.capture-area-annotate-description",
@@ -8406,6 +8425,11 @@ nonisolated enum L10n {
       "screen-capture.capture-delay-cancel-hint",
       defaultValue: "Esc to cancel",
       comment: "Hint under the screenshot countdown"
+    )
+    static let captureDelayFullscreenHint = string(
+      "screen-capture.capture-delay-fullscreen-hint",
+      defaultValue: "Full screen",
+      comment: "Label under the delayed fullscreen countdown"
     )
     static let permissionDenied = string(
       "screen-capture.permission-denied",

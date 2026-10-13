@@ -356,6 +356,8 @@ final class ScreenCaptureViewModel: ObservableObject, KeyboardShortcutDelegate {
       captureRepeatArea()
     case .captureDelayed:
       captureDelayed()
+    case .captureDelayedFullscreen:
+      captureDelayedFullscreen()
     case .captureAreaAnnotate:
       captureAreaAnnotate()
     case .captureApplication:
@@ -553,15 +555,38 @@ final class ScreenCaptureViewModel: ObservableObject, KeyboardShortcutDelegate {
   /// capture), then select an area on a frozen snapshot taken when the
   /// countdown ends, so menus and hover states opened meanwhile are kept.
   func captureDelayed() {
+    startDelayedCapture(target: .area)
+  }
+
+  /// Self-timer fullscreen capture: the same countdown, then a fullscreen
+  /// screenshot of the display the pointer is on. The HUD never takes focus,
+  /// so menus and hover states opened during the countdown stay open and are
+  /// included in the screenshot.
+  func captureDelayedFullscreen() {
+    startDelayedCapture(target: .fullscreen)
+  }
+
+  private func startDelayedCapture(target: CaptureDelayTarget) {
     guard !isAreaSelectionActive else {
-      DiagnosticLogger.shared.log(.debug, .capture, "captureDelayed blocked: area selection active")
+      DiagnosticLogger.shared.log(
+        .debug,
+        .capture,
+        "captureDelayed blocked: area selection active",
+        context: ["target": target.logName]
+      )
       return
     }
     CaptureDelayCountdownController.shared.start(
       seconds: CaptureDelayOption.current().seconds,
-      captureName: "delayedArea"
+      captureName: target.logName,
+      detail: target.hudDetail
     ) { [weak self] in
-      self?.startAreaCapture(initialInteractionMode: .manualRegion, forceFrozenSelection: true)
+      switch target {
+      case .area:
+        self?.startAreaCapture(initialInteractionMode: .manualRegion, forceFrozenSelection: true)
+      case .fullscreen:
+        self?.captureFullscreen()
+      }
     }
   }
 

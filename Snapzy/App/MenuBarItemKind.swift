@@ -31,6 +31,7 @@ enum MenuBarItemKind: String, CaseIterable {
   case captureSmartElement
   case captureObjectCutout
   case captureDelayed
+  case captureDelayedFullscreen
 
   // Recording
   case recordScreen
@@ -51,7 +52,7 @@ enum MenuBarItemKind: String, CaseIterable {
     switch self {
     case .captureArea, .captureAreaAnnotate, .captureApplication, .captureFullscreen,
          .captureActiveWindow, .scrollingCapture, .captureOCR, .captureSmartElement,
-         .captureObjectCutout, .captureDelayed:
+         .captureObjectCutout, .captureDelayed, .captureDelayedFullscreen:
       return .capture
     case .recordScreen, .recordApplication:
       return .recording
@@ -81,6 +82,7 @@ enum MenuBarItemKind: String, CaseIterable {
     case .captureSmartElement: return L10n.Actions.captureSmartElement
     case .captureObjectCutout: return GlobalShortcutKind.objectCutout.displayName
     case .captureDelayed: return L10n.Actions.captureDelayed
+    case .captureDelayedFullscreen: return L10n.Actions.captureDelayedFullscreen
     case .recordScreen: return L10n.Menu.recordScreen
     case .recordApplication: return L10n.PreferencesShortcuts.applicationRecordingTitle
     case .openAnnotate: return L10n.Actions.openAnnotate
@@ -106,6 +108,7 @@ enum MenuBarItemKind: String, CaseIterable {
     case .captureSmartElement: return "dot.viewfinder"
     case .captureObjectCutout: return "person.crop.rectangle"
     case .captureDelayed: return "timer"
+    case .captureDelayedFullscreen: return "display"
     case .recordScreen: return "record.circle"
     case .recordApplication: return "square.on.square"
     case .openAnnotate: return "pencil.and.outline"

@@ -31,8 +31,14 @@ final class CaptureDelayCountdownController {
   var isActive: Bool { onFinish != nil }
 
   /// Count down `seconds`, then run `onFinish`. Ignored while another
-  /// countdown is running.
-  func start(seconds: Int, captureName: String, onFinish: @escaping @MainActor () -> Void) {
+  /// countdown is running. `detail` is an optional line under the digits
+  /// (used by delayed fullscreen so the HUD says what will be captured).
+  func start(
+    seconds: Int,
+    captureName: String,
+    detail: String? = nil,
+    onFinish: @escaping @MainActor () -> Void
+  ) {
     guard !isActive else {
       DiagnosticLogger.shared.log(.debug, .capture, "Capture delay ignored: countdown already running", context: [
         "capture": captureName,
@@ -51,6 +57,7 @@ final class CaptureDelayCountdownController {
     self.onFinish = onFinish
     countdown = CaptureDelayCountdown(seconds: seconds)
     model.remainingSeconds = seconds
+    model.detail = detail
     showPanel()
     installKeyMonitors()
 
@@ -94,16 +101,27 @@ final class CaptureDelayCountdownController {
     let panel = self.panel ?? makePanel()
     self.panel = panel
 
+    let size = Self.panelSize(showsDetail: model.detail != nil)
     let mouseLocation = NSEvent.mouseLocation
     let screen = NSScreen.screens.first { NSMouseInRect(mouseLocation, $0.frame, false) } ?? NSScreen.main
     if let visibleFrame = screen?.visibleFrame {
-      let size = panel.frame.size
-      panel.setFrameOrigin(NSPoint(
-        x: visibleFrame.midX - size.width / 2,
-        y: visibleFrame.midY - size.height / 2
-      ))
+      panel.setFrame(
+        NSRect(
+          x: visibleFrame.midX - size.width / 2,
+          y: visibleFrame.midY - size.height / 2,
+          width: size.width,
+          height: size.height
+        ),
+        display: false
+      )
+    } else {
+      panel.setContentSize(size)
     }
     panel.orderFrontRegardless()
+  }
+
+  private static func panelSize(showsDetail: Bool) -> NSSize {
+    showsDetail ? NSSize(width: 200, height: 176) : NSSize(width: 150, height: 150)
   }
 
   private func makePanel() -> NSPanel {
@@ -165,6 +183,7 @@ private final class FirstMouseHostingView<Content: View>: NSHostingView<Content>
 @MainActor
 private final class CaptureDelayCountdownModel: ObservableObject {
   @Published var remainingSeconds = 0
+  @Published var detail: String?
 }
 
 private struct CaptureDelayCountdownView: View {
@@ -176,11 +195,19 @@ private struct CaptureDelayCountdownView: View {
       Text(verbatim: "\(model.remainingSeconds)")
         .font(.system(size: 64, weight: .semibold, design: .rounded))
         .monospacedDigit()
+      if let detail = model.detail {
+        Text(detail)
+          .font(.system(size: 12, weight: .semibold))
+          .lineLimit(1)
+      }
       Text(L10n.ScreenCapture.captureDelayCancelHint)
         .font(.system(size: 11, weight: .medium))
         .foregroundStyle(.secondary)
     }
-    .frame(width: 150, height: 150)
+    .frame(
+      width: model.detail == nil ? 150 : 200,
+      height: model.detail == nil ? 150 : 176
+    )
     .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
     .overlay(
       RoundedRectangle(cornerRadius: 24, style: .continuous)

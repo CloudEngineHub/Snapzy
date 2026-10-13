@@ -16,6 +16,7 @@ final class SnapzyDeepLinkHandlerTests: XCTestCase {
       ("snapzy://capture/area", .captureArea),
       ("snapzy://capture/repeat-area", .captureRepeatArea),
       ("snapzy://capture/delayed", .captureDelayed),
+      ("snapzy://capture/delayed-fullscreen", .captureDelayedFullscreen),
       ("snapzy://capture/application", .captureApplication),
       ("snapzy://capture/area-annotate", .captureAreaAnnotate),
       ("snapzy://capture/scrolling", .captureScrolling),
@@ -37,6 +38,30 @@ final class SnapzyDeepLinkHandlerTests: XCTestCase {
       let url = try XCTUnwrap(URL(string: urlString))
       XCTAssertEqual(SnapzyDeepLinkAction(url: url), expectedAction, urlString)
     }
+  }
+
+  func testDelayedFullscreenAliasesParseExpectedAction() throws {
+    let aliases = [
+      "snapzy://delayed-fullscreen",
+      "snapzy://capture-delayed-fullscreen",
+      "snapzy://screenshot/delayed-fullscreen",
+    ]
+
+    for urlString in aliases {
+      let url = try XCTUnwrap(URL(string: urlString))
+      XCTAssertEqual(SnapzyDeepLinkAction(url: url), .captureDelayedFullscreen, urlString)
+    }
+  }
+
+  func testDelayedCaptureModeQuerySelectsFullscreen() throws {
+    let fullscreen = try XCTUnwrap(URL(string: "snapzy://capture/delayed?mode=fullscreen"))
+    XCTAssertEqual(SnapzyDeepLinkAction(url: fullscreen), .captureDelayedFullscreen)
+
+    let area = try XCTUnwrap(URL(string: "snapzy://capture/delayed?mode=area"))
+    XCTAssertEqual(SnapzyDeepLinkAction(url: area), .captureDelayed)
+
+    let uppercase = try XCTUnwrap(URL(string: "snapzy://screenshot/delayed?mode=FULLSCREEN"))
+    XCTAssertEqual(SnapzyDeepLinkAction(url: uppercase), .captureDelayedFullscreen)
   }
 
   func testRepeatAreaAliasesParseExpectedAction() throws {

@@ -581,6 +581,18 @@ final class AppStatusBarController: ObservableObject {
       item.isEnabled = viewModel.hasPermission
       return item
 
+    case .captureDelayedFullscreen:
+      let item = NSMenuItem(
+        title: L10n.Menu.delayedFullscreenCapture(CaptureDelayOption.current().seconds),
+        action: #selector(captureDelayedFullscreenAction),
+        keyEquivalent: ""
+      )
+      applyConfiguredShortcut(item, for: .delayedFullscreen, using: shortcutManager)
+      item.target = self
+      item.image = NSImage(systemSymbolName: "display", accessibilityDescription: nil)
+      item.isEnabled = viewModel.hasPermission
+      return item
+
     case .captureActiveWindow:
       let item = NSMenuItem(
         title: L10n.Actions.captureActiveWindow,
@@ -798,6 +810,11 @@ final class AppStatusBarController: ObservableObject {
   @objc private func captureDelayedAction() {
     logMenuAction("captureDelayed")
     viewModel?.captureDelayed()
+  }
+
+  @objc private func captureDelayedFullscreenAction() {
+    logMenuAction("captureDelayedFullscreen")
+    viewModel?.captureDelayedFullscreen()
   }
 
   @objc private func captureActiveWindowAction() {

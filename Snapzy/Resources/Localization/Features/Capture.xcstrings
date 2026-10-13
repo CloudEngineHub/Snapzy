@@ -4634,61 +4634,61 @@
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Wie lange die verzögerte Aufnahme wartet, bevor der Bildschirm zur Bereichsauswahl eingefroren wird. Öffne Menüs oder Hover-Zustände während des Countdowns."
+            "value": "Wie lange die verzögerte Aufnahme wartet, bevor der Screenshot aufgenommen wird. Öffne Menüs oder Hover-Zustände während des Countdowns."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "How long Delayed Capture waits before freezing the screen for area selection. Open menus or hover states during the countdown."
+            "value": "How long Delayed Capture waits before taking the screenshot. Open menus or hover states during the countdown."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cuánto espera la captura diferida antes de congelar la pantalla para seleccionar un área. Abre menús o estados al pasar el cursor durante la cuenta atrás."
+            "value": "Cuánto espera la captura diferida antes de hacer la captura. Abre menús o estados al pasar el cursor durante la cuenta atrás."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Durée d'attente de la capture différée avant de figer l'écran pour sélectionner une zone. Ouvrez des menus ou des états de survol pendant le compte à rebours."
+            "value": "Durée d'attente de la capture différée avant la capture. Ouvrez des menus ou des états de survol pendant le compte à rebours."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "遅延キャプチャが範囲選択のために画面をフリーズするまでの待ち時間です。カウントダウン中にメニューやホバー状態を開いてください。"
+            "value": "遅延キャプチャがスクリーンショットを撮るまでの待ち時間です。カウントダウン中にメニューやホバー状態を開いてください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "지연 캡처가 영역 선택을 위해 화면을 정지하기 전까지 기다리는 시간입니다. 카운트다운 중에 메뉴나 호버 상태를 여세요."
+            "value": "지연 캡처가 스크린샷을 찍기 전까지 기다리는 시간입니다. 카운트다운 중에 메뉴나 호버 상태를 여세요."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Сколько ждать перед заморозкой экрана для выбора области. Во время отсчёта откройте меню или состояния наведения."
+            "value": "Сколько ждать перед снимком. Во время отсчёта откройте меню или состояния наведения."
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Thời gian chờ trước khi đóng băng màn hình để chọn vùng. Mở menu hoặc trạng thái hover trong lúc đếm ngược."
+            "value": "Thời gian chờ trước khi chụp. Mở menu hoặc trạng thái hover trong lúc đếm ngược."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "延迟截图在冻结屏幕以选择区域前等待的时间。可在倒计时期间打开菜单或悬停状态。"
+            "value": "延迟截图在截取屏幕前等待的时间。可在倒计时期间打开菜单或悬停状态。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "延遲截圖在凍結螢幕以選取區域前等待的時間。可在倒數期間開啟選單或懸停狀態。"
+            "value": "延遲截圖在擷取畫面前等待的時間。可在倒數期間開啟選單或懸停狀態。"
           }
         }
       }
@@ -13224,6 +13224,71 @@
           "stringUnit": {
             "state": "translated",
             "value": "按 Esc 取消"
+          }
+        }
+      }
+    },
+    "screen-capture.capture-delay-fullscreen-hint": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vollbild"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Full screen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pantalla completa"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plein écran"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フルスクリーン"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전체 화면"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Весь экран"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toàn màn hình"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全屏"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全螢幕"
           }
         }
       }

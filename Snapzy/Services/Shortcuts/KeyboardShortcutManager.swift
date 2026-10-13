@@ -482,6 +482,7 @@ enum GlobalShortcutKind: String, CaseIterable, Codable {
   case restartRecording
   case deleteRecording
   case delayedCapture
+  case delayedFullscreen
   case annotate
   case videoEditor
   case cloudUploads
@@ -528,6 +529,8 @@ extension GlobalShortcutKind {
       return L10n.Actions.deleteRecording
     case .delayedCapture:
       return L10n.Actions.captureDelayed
+    case .delayedFullscreen:
+      return L10n.Actions.captureDelayedFullscreen
     case .annotate:
       return L10n.Actions.openAnnotate
     case .videoEditor:
@@ -554,6 +557,7 @@ enum ShortcutAction {
   case captureArea
   case captureRepeatArea
   case captureDelayed
+  case captureDelayedFullscreen
   case captureAreaAnnotate
   case captureApplication
   case captureActiveWindow
@@ -611,6 +615,7 @@ final class KeyboardShortcutManager {
   private(set) var restartRecordingShortcut: ShortcutConfig
   private(set) var deleteRecordingShortcut: ShortcutConfig
   private(set) var delayedCaptureShortcut: ShortcutConfig
+  private(set) var delayedFullscreenShortcut: ShortcutConfig
   private(set) var isEnabled: Bool = false
   private var disabledShortcuts: Set<GlobalShortcutKind> = []
   private var clearedShortcuts: Set<GlobalShortcutKind> = []
@@ -672,6 +677,7 @@ final class KeyboardShortcutManager {
   private var restartRecordingHotkeyRef: EventHotKeyRef?
   private var deleteRecordingHotkeyRef: EventHotKeyRef?
   private var delayedCaptureHotkeyRef: EventHotKeyRef?
+  private var delayedFullscreenHotkeyRef: EventHotKeyRef?
 
   /// Fn-containing bindings can't be expressed via Carbon `RegisterEventHotKey`;
   /// they are dispatched through key event monitors instead.
@@ -702,6 +708,7 @@ final class KeyboardShortcutManager {
   private let deleteRecordingHotkeyID = EventHotKeyID(signature: OSType(0x5A53_464B), id: 20)     // "ZSFK"
   private let repeatAreaHotkeyID = EventHotKeyID(signature: OSType(0x5A53_464C), id: 21)         // "ZSFL"
   private let delayedCaptureHotkeyID = EventHotKeyID(signature: OSType(0x5A53_464D), id: 22)     // "ZSFM"
+  private let delayedFullscreenHotkeyID = EventHotKeyID(signature: OSType(0x5A53_464E), id: 23) // "ZSFN"
 
   private var eventHandler: EventHandlerRef?
 
@@ -726,6 +733,7 @@ final class KeyboardShortcutManager {
   private let restartRecordingShortcutKey = "restartRecordingShortcut"
   private let deleteRecordingShortcutKey = "deleteRecordingShortcut"
   private let delayedCaptureShortcutKey = "delayedCaptureShortcut"
+  private let delayedFullscreenShortcutKey = "delayedFullscreenShortcut"
   private let shortcutsEnabledKey = "shortcutsEnabled"
   private let disabledShortcutsKey = PreferencesKeys.disabledGlobalShortcuts
   private let clearedShortcutsKey = PreferencesKeys.clearedGlobalShortcuts
@@ -751,6 +759,7 @@ final class KeyboardShortcutManager {
     restartRecordingShortcut = ShortcutConfig(keyCode: 0, modifiers: 0)
     deleteRecordingShortcut = ShortcutConfig(keyCode: 0, modifiers: 0)
     delayedCaptureShortcut = ShortcutConfig(keyCode: 0, modifiers: 0)
+    delayedFullscreenShortcut = ShortcutConfig(keyCode: 0, modifiers: 0)
     loadShortcuts()
     loadDisabledShortcuts()
     loadClearedShortcuts()
@@ -862,6 +871,7 @@ final class KeyboardShortcutManager {
     case .restartRecording: return restartRecordingShortcut
     case .deleteRecording: return deleteRecordingShortcut
     case .delayedCapture: return delayedCaptureShortcut
+    case .delayedFullscreen: return delayedFullscreenShortcut
     case .annotate: return annotateShortcut
     case .videoEditor: return videoEditorShortcut
     case .cloudUploads: return cloudUploadsShortcut
@@ -1004,6 +1014,17 @@ final class KeyboardShortcutManager {
     mutateShortcutRegistration {
       setShortcut(config, for: .delayedCapture) {
         delayedCaptureShortcut = $0
+      }
+      saveShortcuts()
+      saveClearedShortcuts()
+    }
+  }
+
+  /// Update delayed fullscreen shortcut (unbound by default)
+  func setDelayedFullscreenShortcut(_ config: ShortcutConfig?) {
+    mutateShortcutRegistration {
+      setShortcut(config, for: .delayedFullscreen) {
+        delayedFullscreenShortcut = $0
       }
       saveShortcuts()
       saveClearedShortcuts()
@@ -1169,6 +1190,11 @@ final class KeyboardShortcutManager {
     } else if let data = try? encoder.encode(delayedCaptureShortcut) {
       UserDefaults.standard.set(data, forKey: delayedCaptureShortcutKey)
     }
+    if clearedShortcuts.contains(.delayedFullscreen) {
+      UserDefaults.standard.removeObject(forKey: delayedFullscreenShortcutKey)
+    } else if let data = try? encoder.encode(delayedFullscreenShortcut) {
+      UserDefaults.standard.set(data, forKey: delayedFullscreenShortcutKey)
+    }
     if let annotateData = try? encoder.encode(annotateShortcut) {
       UserDefaults.standard.set(annotateData, forKey: annotateShortcutKey)
     }
@@ -1254,6 +1280,11 @@ final class KeyboardShortcutManager {
       let config = try? decoder.decode(ShortcutConfig.self, from: delayedCaptureData)
     {
       delayedCaptureShortcut = config
+    }
+    if let delayedFullscreenData = UserDefaults.standard.data(forKey: delayedFullscreenShortcutKey),
+      let config = try? decoder.decode(ShortcutConfig.self, from: delayedFullscreenData)
+    {
+      delayedFullscreenShortcut = config
     }
     if let annotateData = UserDefaults.standard.data(forKey: annotateShortcutKey),
       let config = try? decoder.decode(ShortcutConfig.self, from: annotateData)
@@ -1358,6 +1389,11 @@ final class KeyboardShortcutManager {
       clearedShortcuts.insert(.delayedCapture)
       didMutate = true
     }
+    if UserDefaults.standard.data(forKey: delayedFullscreenShortcutKey) == nil,
+       !clearedShortcuts.contains(.delayedFullscreen) {
+      clearedShortcuts.insert(.delayedFullscreen)
+      didMutate = true
+    }
     if didMutate {
       saveClearedShortcuts()
     }
@@ -1451,6 +1487,9 @@ final class KeyboardShortcutManager {
     case delayedCaptureHotkeyID.id:
       actionName = "delayed-capture"
       action = .captureDelayed
+    case delayedFullscreenHotkeyID.id:
+      actionName = "delayed-fullscreen"
+      action = .captureDelayedFullscreen
     case applicationRecordingHotkeyID.id:
       actionName = "application-recording"
       action = .recordApplication
@@ -1566,6 +1605,12 @@ final class KeyboardShortcutManager {
       config: shortcut(for: .delayedCapture),
       hotkeyID: delayedCaptureHotkeyID,
       ref: &delayedCaptureHotkeyRef
+    )
+    registerShortcutIfNeeded(
+      kind: .delayedFullscreen,
+      config: shortcut(for: .delayedFullscreen),
+      hotkeyID: delayedFullscreenHotkeyID,
+      ref: &delayedFullscreenHotkeyRef
     )
     registerOverlayShortcutIfNeeded(
       label: "application-capture",
@@ -1853,6 +1898,10 @@ final class KeyboardShortcutManager {
     if let ref = delayedCaptureHotkeyRef {
       UnregisterEventHotKey(ref)
       delayedCaptureHotkeyRef = nil
+    }
+    if let ref = delayedFullscreenHotkeyRef {
+      UnregisterEventHotKey(ref)
+      delayedFullscreenHotkeyRef = nil
     }
     if let ref = applicationCaptureHotkeyRef {
       UnregisterEventHotKey(ref)

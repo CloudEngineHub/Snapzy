@@ -34,6 +34,30 @@ enum CaptureDelayOption: Int, CaseIterable, Identifiable {
   }
 }
 
+/// What Delayed Capture does when the countdown ends. Both targets share the
+/// countdown length in Preferences → Capture.
+enum CaptureDelayTarget: Equatable {
+  /// Frozen area selection, so a menu or hover opened during the countdown can be cropped.
+  case area
+  /// Fullscreen screenshot of the display the pointer is on.
+  case fullscreen
+
+  var logName: String {
+    switch self {
+    case .area: return "delayedArea"
+    case .fullscreen: return "delayedFullscreen"
+    }
+  }
+
+  /// Extra HUD line. Area capture keeps the original countdown layout.
+  var hudDetail: String? {
+    switch self {
+    case .area: return nil
+    case .fullscreen: return L10n.ScreenCapture.captureDelayFullscreenHint
+    }
+  }
+}
+
 /// Whole-second countdown. `tick()` is called once per second and reports
 /// when the capture should fire.
 struct CaptureDelayCountdown: Equatable {
