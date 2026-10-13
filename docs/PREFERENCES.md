@@ -79,7 +79,7 @@ Segmented into four panes (`CaptureSettingsPane`): General / Screenshot / Record
 - **Pinned Image**: clickable tiles — selecting `Resize window with image` (default `fixedViewport` alternative `windowFollowsImage`) directly on the animated side-by-side preview applies the mode to pinned windows; key `quickAccess.pin.zoom.mode`.
 - **Position**: screen edge left/right (`floatingScreenshot.position`).
 - **Appearance**: overlay size slider 0.75–1.5 (`floatingScreenshot.overlayScale`).
-- **Behaviors**: floating overlay enable (`floatingScreenshot.enabled`), Auto-Close toggle + 3–30 s slider (default 10, `floatingScreenshot.autoDismiss*`) + Pause on Hover, Hide Card When Window Open (`quickAccess.hideCardWhenWindowOpen`), Animation Style (`quickAccess.animationStyle`), Sound Effects (`quickAccess.playSounds`), Drag & Drop (`floatingScreenshot.dragDropEnabled`), Two-Finger Swipe to Dismiss + sensitivity 0.5–3.0 (`floatingScreenshot.twoFingerSwipe*`).
+- **Behaviors**: floating overlay enable (`floatingScreenshot.enabled`), Auto-Close toggle + 3–30 s slider (default 10, `floatingScreenshot.autoDismiss*`) + Pause on Hover, Hide Card When Window Open (`quickAccess.hideCardWhenWindowOpen`), Animation Style (`quickAccess.animationStyle`), Sound Effects (`quickAccess.playSounds`), Drag & Drop (`floatingScreenshot.dragDropEnabled`), Open in Finder After Saving (`quickAccess.openInFinderAfterSave`), Two-Finger Swipe to Dismiss + sensitivity 0.5–3.0 (`floatingScreenshot.twoFingerSwipe*`).
 - **Trackpad Swipe Mode**: mode picker (`quickAccess.trackpad.swipe.mode`) + swipe-action hints; visible when swipe-to-dismiss is on.
 
 ### History (`PreferencesHistorySettingsView.swift`)
