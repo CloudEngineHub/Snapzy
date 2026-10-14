@@ -4,6 +4,15 @@ All notable changes to Snapzy will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.1.0-beta.6] - 2026-10-14
+
+### Features
+- Improved scrolling capture work on real pages: window chrome, faded margins, and long scrolls (#609) (ce916026)
+
+### Contributors
+- @github-actions[bot]
+- @phamquocbuu
+
 ## [2.1.0-beta.5] - 2026-10-13
 
 ### Features
