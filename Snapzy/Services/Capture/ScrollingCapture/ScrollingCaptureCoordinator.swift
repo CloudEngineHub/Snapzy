@@ -9,7 +9,9 @@ import AppKit
 import ApplicationServices
 import Combine
 import Foundation
+import ImageIO
 import ScreenCaptureKit
+import UniformTypeIdentifiers
 
 @MainActor
 final class ScrollingCaptureCoordinator {
@@ -43,6 +45,7 @@ final class ScrollingCaptureCoordinator {
   private var sessionModelObservation: AnyCancellable?
   private var latestImage: CGImage?
   private var stitcher: ScrollingCaptureStitcher?
+  private var unalignedFrameDumpCount = 0
   private var liveFrameSource: ScrollingCaptureFrameSource?
   private let liveFrameRing = ScrollingCaptureFrameRing(capacity: 8)
   private var commitScheduler: ScrollingCaptureCommitScheduler?
@@ -61,6 +64,12 @@ final class ScrollingCaptureCoordinator {
   private let autoScrollController = ScrollingCaptureAutoScrollController()
   private var settledAutoScrollFrame: ScrollingCaptureFrame?
   private var settledAutoScrollStill: CGImage?
+  /// Manual travel, in signed pixels, that happened after the last accepted
+  /// frame and could not be locked before Auto Scroll took over. Until a step
+  /// appends, the stitcher is comparing against a stale frame, so this distance
+  /// is added to the step's expectation and only an offset that fits it may be
+  /// committed.
+  private var unlockedManualTravelPixels = 0
   private var prepareCaptureContextTask: Task<Void, Never>?
   private var preparedCaptureContext: ScreenCaptureManager.PreparedAreaCaptureContext?
   private var captureScaleFactor: CGFloat = 2
@@ -94,6 +103,7 @@ final class ScrollingCaptureCoordinator {
   ) {
     cancel()
     sessionGeneration += 1
+    unalignedFrameDumpCount = 0
 
     self.onSessionEnded = onSessionEnded
     let model = ScrollingCaptureSessionModel(selectedRect: rect)
@@ -275,18 +285,28 @@ final class ScrollingCaptureCoordinator {
           self.autoScrollTaskID = nil
           self.settledAutoScrollFrame = nil
           self.settledAutoScrollStill = nil
+          self.unlockedManualTravelPixels = 0
         }
       }
 
       await self.waitForPendingPreviewRefresh()
       guard self.autoScrollTaskID == taskID, !Task.isCancelled else { return }
-      if abs(self.pendingScrollDistancePoints) > 2 || self.sessionModel?.runtimeState == .paused {
+      self.unlockedManualTravelPixels = 0
+      if abs(self.pendingScrollDistancePoints) > 2 {
         // Switching from manual scrolling must lock its last viewport before a
         // synthetic burst resets the distance and starts moving the page again.
+        // A viewport that will not lock is no reason to refuse to scroll,
+        // though: the steps that follow have their own frames to align, and
+        // giving up here is what ended a session the moment it resumed. The
+        // first step then has to explain the manual travel as well as its own.
+        let manualTravelPixels = Int(round(self.pendingScrollDistancePoints * self.captureScaleFactor))
         let update = await self.scheduleCommitRefreshAndWait(reason: "Manual viewport before Auto Scroll")
-        guard let update, update.safety == .confirmed else {
-          self.stopAutoScrolling(reason: .userToggle)
-          return
+        guard self.autoScrollTaskID == taskID, !Task.isCancelled else { return }
+        switch update?.outcome {
+        case .ignoredAlignmentFailed, nil:
+          self.unlockedManualTravelPixels = manualTravelPixels
+        default:
+          break
         }
       }
       var isRetry = false
@@ -373,10 +393,17 @@ final class ScrollingCaptureCoordinator {
 
         // Keep the prior fixed across capture/alignment retries: the page must not
         // move again until this viewport has been accepted.
-        let expectedSignedDeltaPixels = self.autoScrollController.expectedSignedDeltaPixels(
+        var expectedSignedDeltaPixels = self.autoScrollController.expectedSignedDeltaPixels(
           observedDistancePoints: self.pendingScrollDistancePoints,
           scaleFactor: self.captureScaleFactor
         )
+        if
+          let stepPixels = expectedSignedDeltaPixels,
+          self.unlockedManualTravelPixels != 0,
+          (stepPixels < 0) == (self.unlockedManualTravelPixels < 0)
+        {
+          expectedSignedDeltaPixels = stepPixels + self.unlockedManualTravelPixels
+        }
         var update: ScrollingCaptureStitchUpdate?
         var action: ScrollingCaptureAutoScrollStitchAction
         repeat {
@@ -404,6 +431,9 @@ final class ScrollingCaptureCoordinator {
             reason: "Auto-scroll step",
             expectedSignedDeltaPixelsOverride: expectedSignedDeltaPixels
           )
+          if Self.advancedCapture(update) {
+            self.unlockedManualTravelPixels = 0
+          }
           guard
             self.autoScrollTaskID == taskID,
             self.sessionModel?.phase == .capturing,
@@ -983,8 +1013,14 @@ final class ScrollingCaptureCoordinator {
           )
         }
       case .ignoredAlignmentFailed:
-        sessionModel.runtimeState = update.matchFailureCount >= 2 ? .paused : previewRuntimeState()
-        if update.matchFailureCount >= 2 {
+        // Telling someone to slow down makes no sense while Auto Scroll is
+        // driving the page: nobody is scrolling, and the paused state it puts
+        // the session into stops Auto Scroll the next time it starts a step.
+        let isAutoScrollDriving = sessionModel.isAutoScrolling
+        sessionModel.runtimeState = update.matchFailureCount >= 2 && !isAutoScrollDriving
+          ? .paused
+          : previewRuntimeState()
+        if update.matchFailureCount >= 2, !isAutoScrollDriving {
           sessionModel.setStatus(
             L10n.ScrollingCaptureStatus.alignmentPaused,
             guidance: .slowDown
@@ -1539,6 +1575,7 @@ final class ScrollingCaptureCoordinator {
   ) async -> (ScrollingCaptureStitchUpdate?, ScrollingCaptureStitcher?) {
     let currentStitcher = stitcher
     let maxOutputHeight = maxOutputHeight
+    let requiresExpectedTravel = autoScrollController.activeStep != nil && unlockedManualTravelPixels != 0
     let allowsSettledPartialStep = autoScrollController.activeStep != nil
       && (settledAutoScrollFrame != nil || settledAutoScrollStill != nil)
 
@@ -1551,7 +1588,8 @@ final class ScrollingCaptureCoordinator {
               maxOutputHeight: maxOutputHeight,
               expectedSignedDeltaPixels: expectedSignedDeltaPixels,
               renderMergedImage: renderMergedImage,
-              allowsSettledPartialStep: allowsSettledPartialStep
+              allowsSettledPartialStep: allowsSettledPartialStep,
+              requiresExpectedTravel: requiresExpectedTravel
             )
             continuation.resume(returning: (update, currentStitcher))
           } else {
@@ -1859,6 +1897,68 @@ final class ScrollingCaptureCoordinator {
     )
   }
 
+  /// Whether a commit moved the stitcher on to a new last frame.
+  private static func advancedCapture(_ update: ScrollingCaptureStitchUpdate?) -> Bool {
+    switch update?.outcome {
+    case .appended, .reachedHeightLimit, .initialized:
+      return true
+    case .ignoredNoMovement, .ignoredAlignmentFailed, nil:
+      return false
+    }
+  }
+
+  /// Writes the two frames that would not align, so a capture that stalls on a
+  /// real page can be worked on afterwards. The frames are raw screen content,
+  /// so this needs a hidden developer switch on top of diagnostics, and it is
+  /// bounded so a long session cannot fill the log folder.
+  private func dumpUnalignedFrames(
+    commitFrame: CommitFrame,
+    update: ScrollingCaptureStitchUpdate
+  ) -> String? {
+    guard
+      DiagnosticLogger.shared.isEnabled,
+      UserDefaults.standard.bool(forKey: PreferencesKeys.diagnosticsDumpUnalignedScrollingFrames),
+      unalignedFrameDumpCount < 3,
+      let stitcher
+    else { return nil }
+
+    let directory = DiagnosticLogger.shared.unalignedScrollingFramesDirectoryURL
+    let stamp = Self.unalignedFrameStampFormatter.string(from: Date())
+    let base = "\(stamp)-g\(sessionGeneration)-f\(update.acceptedFrameCount)"
+    let current = commitFrame.image
+    unalignedFrameDumpCount += 1
+
+    // The stitcher is confined to the processing queue, and encoding two
+    // full-resolution PNGs is slow enough to stall the session UI, so neither
+    // happens here.
+    processingQueue.async {
+      guard let previous = stitcher.lastAcceptedImage() else { return }
+      DispatchQueue.global(qos: .utility).async {
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        Self.write(image: previous, to: directory.appendingPathComponent("\(base)-previous.png"))
+        Self.write(image: current, to: directory.appendingPathComponent("\(base)-current.png"))
+      }
+    }
+    return base
+  }
+
+  @discardableResult
+  private nonisolated static func write(image: CGImage, to url: URL) -> Bool {
+    guard
+      let destination = CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil)
+    else {
+      return false
+    }
+    CGImageDestinationAddImage(destination, image, nil)
+    return CGImageDestinationFinalize(destination)
+  }
+
+  private static let unalignedFrameStampFormatter: DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.dateFormat = "HHmmss"
+    return formatter
+  }()
+
   private func logScrollingCaptureStitchUpdate(
     reason: String,
     expectedSignedDeltaPixels: Int?,
@@ -1895,6 +1995,14 @@ final class ScrollingCaptureCoordinator {
     ]
 
     addOutcomeDetails(update.outcome, to: &context)
+
+    if
+      case .ignoredAlignmentFailed = update.outcome,
+      update.matchFailureCount >= 2,
+      let dumped = dumpUnalignedFrames(commitFrame: commitFrame, update: update)
+    {
+      context["framesDumped"] = dumped
+    }
 
     if sessionModel?.isAutoScrolling == true {
       context["autoScrollPhase"] = autoScrollPhaseName(autoScrollController.phase)

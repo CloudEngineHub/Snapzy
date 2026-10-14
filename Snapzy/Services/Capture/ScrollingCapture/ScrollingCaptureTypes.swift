@@ -286,19 +286,37 @@ enum ScrollingCaptureAutoScrollPolicy {
 
   static let hoverPadding: CGFloat = 16
   static let alignmentFailureStopThreshold = 3
-  static let noMovementFinishThreshold = 2
+  /// Scroll steps that must all come back with nothing new before the page is
+  /// called finished.
+  ///
+  /// A page stops short of its end for reasons that pass: it is loading the
+  /// next stretch, an animation is still running, or it swallowed the step
+  /// while a sticky element settled. One quiet step says nothing, so the end is
+  /// only believed after ten of them, each one a real scroll, and any step
+  /// that appends resets the count.
+  static let noMovementFinishThreshold = 10
   // Keep display-paced input while advancing enough per commit to avoid crawling
   // on tall selections, retaining the existing viewport overlap bound.
   static let wheelDeltaY: Int32 = -8
   static let tickIntervalNanoseconds: UInt64 = 16_000_000
-  static let settleNanoseconds: UInt64 = 120_000_000
-  static let retrySettleNanoseconds: UInt64 = 180_000_000
+  // A short step followed by a real pause: the page is given time to finish
+  // scrolling, settle its animations and redraw whatever it fades near the
+  // bottom edge, and each step leaves most of the viewport overlapping the last
+  // one, which is what alignment has to work with. Long steps on a page with
+  // large flat areas leave too little in common to match.
+  static let settleNanoseconds: UInt64 = 300_000_000
+  static let retrySettleNanoseconds: UInt64 = 450_000_000
   static let pausedIntervalNanoseconds: UInt64 = 150_000_000
   static let freshFrameTimeoutNanoseconds: UInt64 = 600_000_000
-  static let targetViewportFraction: CGFloat = 0.24
-  static let maxSafeViewportFraction: CGFloat = 0.26
-  static let minStepPoints: CGFloat = 36
-  static let maxStepPoints: CGFloat = 240
+  static let targetViewportFraction: CGFloat = 0.12
+  static let maxSafeViewportFraction: CGFloat = 0.15
+  /// Two wheel ticks. A single tick is 8 px on a 1x display, which never
+  /// aligned; two ticks aligned on every region height tried.
+  static let minStepPoints: CGFloat = 16
+  static let maxStepPoints: CGFloat = 120
+  /// Hard ceiling for small selections, where the minimum step outweighs the
+  /// viewport fractions above. Still leaves most of the viewport overlapping.
+  static let maxSmallRegionFraction: CGFloat = 0.35
 
   static func canToggle(
     phase: ScrollingCapturePhase,
@@ -325,10 +343,12 @@ enum ScrollingCaptureAutoScrollPolicy {
 
   static func stepDistancePoints(regionHeight: CGFloat) -> CGFloat {
     let height = max(1, regionHeight)
-    let preferred = height * targetViewportFraction
-    let maxSafe = height * maxSafeViewportFraction
-    let clampedPreferred = min(maxStepPoints, max(minStepPoints, preferred))
-    return min(clampedPreferred, max(1, maxSafe))
+    let preferred = min(height * targetViewportFraction, height * maxSafeViewportFraction)
+    // The minimum wins over the viewport fractions: on a small selection they
+    // would ask for a single wheel tick, a move the stitcher could not align,
+    // and every other step failed until Auto Scroll stopped.
+    let step = min(maxStepPoints, max(minStepPoints, preferred))
+    return min(step, max(1, height * maxSmallRegionFraction))
   }
 
   static func tickCount(forStepDistancePoints step: CGFloat) -> Int {
@@ -339,7 +359,7 @@ enum ScrollingCaptureAutoScrollPolicy {
 
   static func stepPlan(regionHeight: CGFloat, isRetry: Bool) -> StepPlan {
     let fullStep = stepDistancePoints(regionHeight: regionHeight)
-    let step = isRetry ? max(1, fullStep * 0.55) : fullStep
+    let step = isRetry ? min(fullStep, max(minStepPoints, fullStep * 0.55)) : fullStep
     let ticks = tickCount(forStepDistancePoints: step)
     return StepPlan(
       tickCount: ticks,
