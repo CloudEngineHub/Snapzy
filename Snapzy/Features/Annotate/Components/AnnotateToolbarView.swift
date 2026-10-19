@@ -10,6 +10,7 @@ import SwiftUI
 private enum AnnotateToolbarActionRegistration: Equatable {
   case annotateDefault
   case crop
+  case cutOut
 }
 
 /// Top toolbar containing all annotation tools
@@ -92,12 +93,24 @@ struct AnnotateToolbarView: View {
 
       ToolbarDivider()
 
-      rotateButtonsGroup
+      imageTransformButtonsGroup
     }
   }
 
-  private var rotateButtonsGroup: some View {
+  /// Cut out sits with rotate so Crop/Sidebar keep their established positions.
+  private var imageTransformButtonsGroup: some View {
     HStack(spacing: 4) {
+      ToolbarButton(
+        icon: "scissors",
+        isSelected: state.selectedTool == .cutOut,
+        activeGlassTint: nil
+      ) {
+        state.beginCutOutInteraction()
+      }
+      .help(L10n.AnnotateUI.cutOut)
+      .disabled(!state.canApplyCutOut)
+      .opacity(state.canApplyCutOut ? 1 : 0.4)
+
       ToolbarButton(icon: "rotate.left", isSelected: false) {
         state.rotateImage(clockwise: false)
       }
@@ -184,6 +197,9 @@ struct AnnotateToolbarView: View {
     if state.selectedTool == .crop && state.isCropActive {
       return .crop
     }
+    if state.selectedTool == .cutOut && state.isCutOutActive {
+      return .cutOut
+    }
 
     return .annotateDefault
   }
@@ -196,6 +212,9 @@ struct AnnotateToolbarView: View {
         .transition(.move(edge: .trailing))
     case .crop:
       cropActionButtons
+        .transition(.move(edge: .trailing))
+    case .cutOut:
+      cutOutActionButtons
         .transition(.move(edge: .trailing))
     }
   }
@@ -231,6 +250,22 @@ struct AnnotateToolbarView: View {
         state.confirmCropInteraction()
       }
       .buttonStyle(.liquidGlass(emphasis: .primary, capsule: true))
+    }
+  }
+
+  private var cutOutActionButtons: some View {
+    HStack(spacing: 8) {
+      Button(L10n.Common.cancel) {
+        state.cancelCutOut()
+      }
+      .buttonStyle(.liquidGlass(emphasis: .secondary, capsule: true))
+
+      Button(state.cutOutMode == .remove ? L10n.AnnotateUI.cutOut : L10n.AnnotateUI.cutOutInsert) {
+        state.commitCutOut()
+      }
+      .buttonStyle(.liquidGlass(emphasis: .primary, capsule: true))
+      .disabled(state.cutOutPreviewStrip == nil)
+      .opacity(state.cutOutPreviewStrip == nil ? 0.4 : 1)
     }
   }
 
