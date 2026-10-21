@@ -6,6 +6,23 @@
     <description>Snapzy application updates</description>
     <language>en</language>
     <item>
+      <title>Version 2.1.0-beta.11</title>
+      <sparkle:channel>beta</sparkle:channel>
+      <sparkle:version>209</sparkle:version>
+      <sparkle:shortVersionString>2.1.0-beta.11</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <pubDate>Wed, 21 Oct 2026 18:37:04 +0000</pubDate>
+      <description><![CDATA[
+        <style>:root { color-scheme: light dark; } body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 13px; line-height: 1.5; padding: 8px 16px; } h3 { font-size: 14px; margin: 12px 0 6px; } ul { padding-left: 20px; margin: 4px 0; } li { margin: 3px 0; }</style>
+        <h3>✨ Features</h3><ul><li>Added Pick Color with a live, pixel-exact loupe (4e0d1de9)</li></ul>
+      ]]></description>
+      <enclosure
+        url="https://github.com/duongductrong/Snapzy/releases/download/v2.1.0-beta.11/Snapzy-v2.1.0-beta.11.dmg"
+        sparkle:edSignature="29FalS/kcS5gjme9Avi4dCrgMbqhqEdabWiS+qSUQNi/ZcPhhaaqyYjRbJTVoMTResxuHII5f67yHrpj1nKNDg=="
+        length="50088958"
+        type="application/octet-stream"/>
+    </item>
+    <item>
       <title>Version 2.1.0-beta.10</title>
       <sparkle:channel>beta</sparkle:channel>
       <sparkle:version>208</sparkle:version>
