@@ -6,6 +6,23 @@
     <description>Snapzy application updates</description>
     <language>en</language>
     <item>
+      <title>Version 2.1.0-beta.14</title>
+      <sparkle:channel>beta</sparkle:channel>
+      <sparkle:version>214</sparkle:version>
+      <sparkle:shortVersionString>2.1.0-beta.14</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <pubDate>Fri, 23 Oct 2026 18:55:14 +0000</pubDate>
+      <description><![CDATA[
+        <style>:root { color-scheme: light dark; } body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 13px; line-height: 1.5; padding: 8px 16px; } h3 { font-size: 14px; margin: 12px 0 6px; } ul { padding-left: 20px; margin: 4px 0; } li { margin: 3px 0; }</style>
+        <h3>🐛 Bug Fixes</h3><ul><li>Stop live capture from swallowing the capture hotkey's keyUp (07a35516)</li><li>Retry DMG stapling on transient CloudKit failures (b7ad6802)</li><li>Keep pinned window drags alive across displays on macOS 27 (d9267305)</li><li>Read history records from the database in the retention sweep (ef5e914d)</li><li>Resize GIFs off the main actor (647e06b1)</li><li>Stream GIF frames to the encoder and keep duration on failed frames (2ad35d24)</li><li>Cut paused recording spans by sample timestamps (6f6888fe)</li><li>Expire cached shareable content and make delayed capture cancellable (7626b63e)</li><li>Harden recording session start, stream errors and GIF output (96d0551c)</li><li>Keep annotations in place after Cut Out and inline selection resize (53cc370f)</li><li>Free editor caches when Quick Access evicts its oldest card (dff80d1f)</li><li>Stop retention sweep from deleting every history thumbnail (b67a96d4)</li><li>Remove cloud expiry rule when switching to permanent (47645d05)</li><li>Detect a menu bar icon hidden by the notch and open Settings on reopen (2ca2dae5)</li></ul>
+      ]]></description>
+      <enclosure
+        url="https://github.com/duongductrong/Snapzy/releases/download/v2.1.0-beta.14/Snapzy-v2.1.0-beta.14.dmg"
+        sparkle:edSignature="bBrwECUJtAS8vr/P0xx+YUzA6OTk6GU7XcDFy1A+MD/6jO5vovDEa8jURAFGpA+BdR8tMROK1CZ8JqmE/1e5BA=="
+        length="50110251"
+        type="application/octet-stream"/>
+    </item>
+    <item>
       <title>Version 2.1.0-beta.13</title>
       <sparkle:channel>beta</sparkle:channel>
       <sparkle:version>211</sparkle:version>
