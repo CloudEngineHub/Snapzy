@@ -11,6 +11,7 @@ nonisolated enum L10n {
   private nonisolated static let tableMappings: [(prefix: String, tableName: String)] = [
     ("action.", "Common"),
     ("combine.", "Combine"),
+    ("command-line.", "CommandLine"),
     ("menu.", "Menubar"),
     ("common.", "Common"),
     ("whats-new.", "WhatsNew"),
@@ -190,6 +191,11 @@ nonisolated enum L10n {
       "preferences.tab.cloud",
       defaultValue: "Cloud",
       comment: "Preferences tab title"
+    )
+    static let commandLineTab = string(
+      "preferences.tab.command-line",
+      defaultValue: "Command Line",
+      comment: "Preferences tab title for the snapzy command line tool"
     )
     static let advancedTab = string(
       "preferences.tab.advanced",

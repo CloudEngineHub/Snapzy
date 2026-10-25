@@ -149,6 +149,8 @@ Scheme: `snapzy://` (registered in `Snapzy/Resources/Info.plist` `CFBundleURLTyp
 
 Gate: `urlSchemeEnabled` (default `true`; Settings → Advanced → URL Scheme integration). Disabled or unknown routes are logged and ignored.
 
+Deep links are fire-and-forget and mostly interactive (the user still selects the area). For non-interactive captures with a file path, JSON, and exit codes — agents, scripts — use the `snapzy` command line tool: [CLI.md](CLI.md).
+
 Dispatch: AppleEvent `kAEGetURL` → `AppDelegate` (queued pre-launch) → `AppCoordinator.handleDeepLink` → `SnapzyDeepLinkHandler` (`Snapzy/App/SnapzyDeepLinkHandler.swift`); routes parsed by `SnapzyDeepLinkAction.init?(url:)`.
 
 ### Canonical route table
@@ -184,7 +186,7 @@ Dispatch: AppleEvent `kAEGetURL` → `AppDelegate` (queued pre-launch) → `AppC
   open 'snapzy://open/combine?file=/tmp/first.png&file=/tmp/second.png'
   ```
 
-- Settings tabs: `general`, `capture`, `annotate`, `quick-access`, `history`, `shortcuts`, `permissions`, `cloud`, `advanced`, `about`. Also accepted as path form (`snapzy://settings/capture`).
+- Settings tabs: `general`, `capture`, `annotate`, `quick-access`, `history`, `shortcuts`, `permissions`, `command-line` (`cli`), `cloud`, `advanced`, `about`. Also accepted as path form (`snapzy://settings/capture`).
 - Aliases exist for most routes — e.g. `capture/focused-window`, `capture/window`, `record/window`, `screenshot/area`, `ocr`, `annotate`, `combine`, `uploads`, `history`, `shortcuts`, `preferences`, plus tab aliases (`screenshots`, `privacy`, `config`, `toml`, …). Full alias list: `SnapzyDeepLinkAction.init?(url:)` in `Snapzy/App/SnapzyDeepLinkHandler.swift`.
 
 ## Related docs

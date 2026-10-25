@@ -4,31 +4,26 @@ cask "snapzy" do
 
   url "https://github.com/duongductrong/Snapzy/releases/download/v#{version}/Snapzy-v#{version}.dmg"
   name "Snapzy"
-  desc "Native macOS screenshots, recording, annotation, and editing from the menu bar"
-  homepage "https://github.com/duongductrong/Snapzy"
+  desc "Native screenshots, recording, annotation, and editing from the menu bar"
+  homepage "https://snapzy.app/"
 
+  auto_updates true
   depends_on macos: :ventura
 
   app "Snapzy.app"
 
+  # Snapzy's Install button and install.sh link /usr/local/bin/snapzy, which is
+  # Homebrew's bin on Intel Macs, so the `binary` link would find it taken.
+  # Drop a link there that points into an app's Helpers/snapzy; leave anything else.
+  preflight_steps do
+    remove "bin/snapzy", base: :homebrew_prefix, symlink_target_contains: ".app/Contents/Helpers/snapzy"
+  end
+
   zap trash: [
+    "~/.config/snapzy",
     "~/Library/Application Support/Snapzy",
-    "~/Library/Preferences/Snapzy.plist",
-    "~/Library/Caches/Snapzy",
+    "~/Library/HTTPStorages/com.trongduong.snapzy",
+    "~/Library/Logs/Snapzy",
+    "~/Library/Preferences/com.trongduong.snapzy.plist",
   ]
-
-  # NOTE (pre-notarization): Snapzy was previously unsigned — kept for reference.
-  # Uncomment if a future build ships without Developer ID notarization.
-  # caveats <<~EOS
-  #   Snapzy is not signed with an Apple Developer ID certificate.
-  #   On first launch, macOS may block the app. To open it:
-  #     Right-click Snapzy.app → Open → Open
-  #   Or run:
-  #     xattr -cr /Applications/Snapzy.app
-  # EOS
-
-  caveats <<~EOS
-    Snapzy is signed and notarized by Apple (Developer ID).
-    On first launch, grant Screen Recording permission when prompted in System Settings.
-  EOS
 end
