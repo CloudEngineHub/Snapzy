@@ -6,6 +6,22 @@
     <description>Snapzy application updates</description>
     <language>en</language>
     <item>
+      <title>Version 2.1.0</title>
+      <sparkle:version>216</sparkle:version>
+      <sparkle:shortVersionString>2.1.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <pubDate>Sun, 25 Oct 2026 06:23:48 +0000</pubDate>
+      <description><![CDATA[
+        <style>:root { color-scheme: light dark; } body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 13px; line-height: 1.5; padding: 8px 16px; } h3 { font-size: 14px; margin: 12px 0 6px; } ul { padding-left: 20px; margin: 4px 0; } li { margin: 3px 0; }</style>
+        <h3>✨ Features</h3><ul><li>Show capture chrome in screen recordings (fbee5709)</li><li>Added Pick Color with a live, pixel-exact loupe (4e0d1de9)</li><li>Cut Out tool to remove or add a strip from the middle of an image (54e6880f)</li><li>Improved scrolling capture work on real pages: window chrome, faded margins, and long scrolls (ce916026)</li><li>Added delayed fullscreen screenshot (09bb7929)</li><li>Added configuration for opening Finder after saving optional (d0d9816c)</li><li>Added attached arrows to counter annotations (80be6dc0)</li><li>Click an annotation's edge to select it with any tool (368bc338)</li><li>select pinned image zoom mode directly from preview tiles (8e9b9923)</li><li>Added keyboard navigation to floating history (f8edc72e)</li></ul><h3>🐛 Bug Fixes</h3><ul><li>Stop live capture from swallowing the capture hotkey's keyUp (07a35516)</li><li>Retry DMG stapling on transient CloudKit failures (b7ad6802)</li><li>Keep pinned window drags alive across displays on macOS 27 (d9267305)</li><li>Read history records from the database in the retention sweep (ef5e914d)</li><li>Resize GIFs off the main actor (647e06b1)</li><li>Stream GIF frames to the encoder and keep duration on failed frames (2ad35d24)</li><li>Cut paused recording spans by sample timestamps (6f6888fe)</li><li>Expire cached shareable content and make delayed capture cancellable (7626b63e)</li><li>Harden recording session start, stream errors and GIF output (96d0551c)</li><li>Keep annotations in place after Cut Out and inline selection resize (53cc370f)</li><li>Free editor caches when Quick Access evicts its oldest card (dff80d1f)</li><li>Stop retention sweep from deleting every history thumbnail (b67a96d4)</li><li>Remove cloud expiry rule when switching to permanent (47645d05)</li><li>Detect a menu bar icon hidden by the notch and open Settings on reopen (2ca2dae5)</li><li>Keep the app beneath focused during live capture so tooltips survive (4b940ff9)</li><li>Refresh stale window frames before sizing window captures (e3bd64ca)</li><li>Unlock magnifier color panel and add magnifier size setting (9de2b0f2)</li><li>Invalidate capture event tap on teardown to stop tap leak (f0850a0a)</li><li>Fixed recording stop button not responding on macOS 13–15 (3ad7e3fe)</li><li>Keep Quick Access panel out of screenshots when Snapzy is excluded (20c14dbf)</li><li>Keep shadowed window captures at native resolution (00ae7536)</li><li>Fixed capture remapped and consumed keystrokes (d74508b0)</li><li>Sync include_window_shadow with config.toml (5dd42ee2)</li><li>Fixed keystroke overlay above elevated windows (4f3d326b)</li><li>Correct restored screen crop placement in screenshots (5625449d)</li><li>stabilize pinned image focal anchoring and restore gesture zoom paths (9b574164)</li></ul>
+      ]]></description>
+      <enclosure
+        url="https://github.com/duongductrong/Snapzy/releases/download/v2.1.0/Snapzy-v2.1.0.dmg"
+        sparkle:edSignature="+BI1fJ1nFS3fLFMygeb3Z4dYOgeq4aMRsIKqZIW0jJOt/E9gpT5U3TyEuqaXpjOtwE+OqRlOqHE585yX/zn0CQ=="
+        length="50127520"
+        type="application/octet-stream"/>
+    </item>
+    <item>
       <title>Version 2.1.0-beta.15</title>
       <sparkle:channel>beta</sparkle:channel>
       <sparkle:version>215</sparkle:version>
