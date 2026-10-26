@@ -8,7 +8,8 @@
 import AVFoundation
 import SwiftUI
 
-private enum CaptureSettingsPane: CaseIterable, Hashable, Identifiable {
+/// Raw values are referenced by `PreferencesSearchIndex` to open the right segment.
+private enum CaptureSettingsPane: String, CaseIterable, Hashable, Identifiable {
   case general
   case screenshot
   case recording
@@ -28,6 +29,15 @@ private enum CaptureSettingsPane: CaseIterable, Hashable, Identifiable {
       CaptureType.recording.displayName
     case .ocr:
       L10n.PreferencesCapture.ocrTab
+    }
+  }
+
+  var previewScene: CaptureSettingsPreviewScene {
+    switch self {
+    case .general: .general
+    case .screenshot: .screenshot
+    case .recording: .recording
+    case .ocr: .ocr
     }
   }
 }
@@ -118,29 +128,33 @@ struct CaptureSettingsView: View {
 
   var body: some View {
     VStack(spacing: 0) {
-      HStack {
-        Spacer()
-
-        Picker("", selection: $selectedPane) {
-          ForEach(CaptureSettingsPane.allCases) { pane in
-            Text(pane.title).tag(pane)
-          }
-        }
-        .labelsHidden()
-        .pickerStyle(.segmented)
-        .frame(maxWidth: 560)
-
-        Spacer()
-      }
-      .padding(.horizontal, 20)
-      .padding(.top, 16)
-      .padding(.bottom, 8)
-
       Form {
+        // Preview and pane picker scroll with the settings so the preview
+        // never pins vertical space.
+        Section {
+          CaptureSettingsPreview(scene: selectedPane.previewScene)
+            .padding(.vertical, 4)
+        } footer: {
+          HStack {
+            Spacer()
+
+            Picker("", selection: $selectedPane) {
+              ForEach(CaptureSettingsPane.allCases) { pane in
+                Text(pane.title).tag(pane)
+              }
+            }
+            .labelsHidden()
+            .pickerStyle(.segmented)
+            .frame(maxWidth: 560)
+
+            Spacer()
+          }
+          .padding(.top, 12)
+        }
+
         if selectedPane == .general {
           Section(L10n.PreferencesCapture.appWindowsSection) {
             SettingRow(
-              icon: "photo.on.rectangle",
               title: L10n.PreferencesCapture.includeInScreenshotsTitle,
               description: L10n.PreferencesCapture.includeInScreenshotsDescription
             ) {
@@ -149,7 +163,6 @@ struct CaptureSettingsView: View {
             }
 
             SettingRow(
-              icon: "video",
               title: L10n.PreferencesCapture.includeInRecordingsTitle,
               description: L10n.PreferencesCapture.includeInRecordingsDescription
             ) {
@@ -164,7 +177,6 @@ struct CaptureSettingsView: View {
         if selectedPane == .general {
           Section(L10n.PreferencesCapture.desktopSection) {
             SettingRow(
-              icon: "eye.slash",
               title: L10n.PreferencesCapture.hideDesktopIconsTitle,
               description: L10n.PreferencesCapture.hideDesktopIconsDescription
             ) {
@@ -173,7 +185,6 @@ struct CaptureSettingsView: View {
             }
 
             SettingRow(
-              icon: "widget.small",
               title: L10n.PreferencesCapture.hideDesktopWidgetsTitle,
               description: L10n.PreferencesCapture.hideDesktopWidgetsDescription
             ) {
@@ -184,7 +195,6 @@ struct CaptureSettingsView: View {
 
           Section(L10n.PreferencesCapture.overlaySection) {
             SettingRow(
-              icon: "macwindow",
               title: L10n.PreferencesCapture.showSelectionAreaOverlayTitle,
               description: L10n.PreferencesCapture.showSelectionAreaOverlayDescription
             ) {
@@ -193,7 +203,6 @@ struct CaptureSettingsView: View {
             }
 
             SettingRow(
-              icon: "viewfinder",
               title: L10n.PreferencesCapture.autoDetectWindowUnderCursorTitle,
               description: L10n.PreferencesCapture.autoDetectWindowUnderCursorDescription
             ) {
@@ -207,7 +216,6 @@ struct CaptureSettingsView: View {
             }
 
             SettingRow(
-              icon: "viewfinder.circle",
               title: L10n.PreferencesCapture.autoDetectElementUnderCursorTitle,
               description: L10n.PreferencesCapture.autoDetectElementUnderCursorDescription
             ) {
@@ -219,7 +227,6 @@ struct CaptureSettingsView: View {
 
           Section(L10n.PreferencesCapture.magnifierZoomSection) {
             SettingRow(
-              icon: "magnifyingglass",
               title: L10n.PreferencesCapture.showMagnifierByDefaultTitle,
               description: L10n.PreferencesCapture.showMagnifierByDefaultDescription
             ) {
@@ -228,7 +235,6 @@ struct CaptureSettingsView: View {
             }
 
             SettingRow(
-              icon: "arrow.up.and.down",
               title: L10n.PreferencesCapture.reverseMagnifierZoomDirectionTitle,
               description: L10n.PreferencesCapture.reverseMagnifierZoomDirectionDescription
             ) {
@@ -237,7 +243,6 @@ struct CaptureSettingsView: View {
             }
 
             SettingRow(
-              icon: "eyedropper",
               title: L10n.PreferencesCapture.showMagnifierColorPanelTitle,
               description: L10n.PreferencesCapture.showMagnifierColorPanelDescription
             ) {
@@ -248,7 +253,6 @@ struct CaptureSettingsView: View {
             }
 
             SettingRow(
-              icon: "arrow.up.left.and.arrow.down.right",
               title: L10n.PreferencesCapture.magnifierSizeTitle,
               description: L10n.PreferencesCapture.magnifierSizeDescription
             ) {
@@ -268,7 +272,6 @@ struct CaptureSettingsView: View {
         if selectedPane == .screenshot {
           Section(L10n.PreferencesCapture.screenshotFormatSection) {
             SettingRow(
-              icon: "cursorarrow",
               title: L10n.PreferencesCapture.showCursorTitle,
               description: L10n.PreferencesCapture.showCursorDescription
             ) {
@@ -277,7 +280,6 @@ struct CaptureSettingsView: View {
             }
 
             SettingRow(
-              icon: "shadow",
               title: L10n.PreferencesCapture.includeWindowShadowTitle,
               description: L10n.PreferencesCapture.includeWindowShadowDescription
             ) {
@@ -286,7 +288,6 @@ struct CaptureSettingsView: View {
             }
 
             SettingRow(
-              icon: "snowflake",
               title: L10n.PreferencesCapture.freezeAreaTitle,
               description: L10n.PreferencesCapture.freezeAreaDescription
             ) {
@@ -295,7 +296,6 @@ struct CaptureSettingsView: View {
             }
 
             SettingRow(
-              icon: "timer",
               title: L10n.PreferencesCapture.delayedCaptureTitle,
               description: L10n.PreferencesCapture.delayedCaptureDescription
             ) {
@@ -309,7 +309,6 @@ struct CaptureSettingsView: View {
             }
 
             SettingRow(
-              icon: "cursorarrow.rays",
               title: L10n.PreferencesCapture.livePassthroughTitle,
               description: L10n.PreferencesCapture.livePassthroughDescription
             ) {
@@ -343,7 +342,6 @@ struct CaptureSettingsView: View {
             }
 
             SettingRow(
-              icon: "photo",
               title: L10n.PreferencesCapture.imageFormatTitle,
               description: L10n.PreferencesCapture.imageFormatDescription
             ) {
@@ -395,7 +393,6 @@ struct CaptureSettingsView: View {
         if selectedPane == .screenshot {
           Section(L10n.PreferencesCapture.scrollingCaptureSection) {
             SettingRow(
-              icon: "lightbulb",
               title: L10n.PreferencesCapture.showSessionHintsTitle,
               description: L10n.PreferencesCapture.showSessionHintsDescription
             ) {
@@ -424,7 +421,6 @@ struct CaptureSettingsView: View {
 
           Section(L10n.PreferencesCapture.ocrNotificationsSection) {
             SettingRow(
-              icon: "bell.badge",
               title: L10n.PreferencesCapture.ocrSuccessNotificationTitle,
               description: L10n.PreferencesCapture.ocrSuccessNotificationDescription
             ) {
@@ -439,7 +435,6 @@ struct CaptureSettingsView: View {
 
           Section(L10n.PreferencesCapture.ocrTextActionsSection) {
             SettingRow(
-              icon: "link",
               title: L10n.PreferencesCapture.ocrLinkDetectionTitle,
               description: L10n.PreferencesCapture.ocrLinkDetectionDescription
             ) {
@@ -452,7 +447,6 @@ struct CaptureSettingsView: View {
         if selectedPane == .general {
           Section(L10n.PreferencesCapture.outputNamingSection) {
             SettingRow(
-              icon: "textformat",
               title: L10n.PreferencesCapture.screenshotTemplateTitle,
               description: L10n.PreferencesCapture.screenshotTemplateDescription
             ) {
@@ -462,7 +456,6 @@ struct CaptureSettingsView: View {
             }
 
             SettingRow(
-              icon: "textformat.abc",
               title: L10n.PreferencesCapture.recordingTemplateTitle,
               description: L10n.PreferencesCapture.recordingTemplateDescription
             ) {
@@ -508,7 +501,6 @@ struct CaptureSettingsView: View {
         if selectedPane == .recording {
           Section(L10n.PreferencesCapture.recordingFormatSection) {
             SettingRow(
-              icon: "film",
               title: L10n.PreferencesCapture.videoFormatTitle,
               description: L10n.PreferencesCapture.videoFormatDescription
             ) {
@@ -525,7 +517,6 @@ struct CaptureSettingsView: View {
         if selectedPane == .recording {
           Section(L10n.PreferencesCapture.recordingQualitySection) {
             SettingRow(
-              icon: "gauge.with.dots.needle.33percent",
               title: L10n.PreferencesCapture.frameRateTitle,
               description: L10n.PreferencesCapture.frameRateDescription
             ) {
@@ -538,7 +529,6 @@ struct CaptureSettingsView: View {
             }
 
             SettingRow(
-              icon: "arrow.down.right.and.arrow.up.left",
               title: L10n.PreferencesCapture.maxResolutionTitle,
               description: L10n.PreferencesCapture.maxResolutionDescription
             ) {
@@ -552,7 +542,6 @@ struct CaptureSettingsView: View {
             }
 
             SettingRow(
-              icon: "sparkles",
               title: L10n.PreferencesCapture.qualityTitle,
               description: L10n.PreferencesCapture.qualityDescription
             ) {
@@ -570,7 +559,6 @@ struct CaptureSettingsView: View {
         if selectedPane == .recording {
           Section(L10n.PreferencesCapture.recordingBehaviorSection) {
             SettingRow(
-              icon: "cursorarrow",
               title: L10n.PreferencesCapture.showCursorTitle,
               description: L10n.PreferencesCapture.recordingShowCursorDescription
             ) {
@@ -579,7 +567,6 @@ struct CaptureSettingsView: View {
             }
 
             SettingRow(
-              icon: "rectangle.center.inset.filled",
               title: L10n.PreferencesCapture.recordingDimNonSelectedAreaTitle,
               description: L10n.PreferencesCapture.recordingDimNonSelectedAreaDescription
             ) {
@@ -588,7 +575,6 @@ struct CaptureSettingsView: View {
             }
 
             SettingRow(
-              icon: "rectangle.dashed",
               title: L10n.PreferencesCapture.rememberLastAreaTitle,
               description: L10n.PreferencesCapture.rememberLastAreaDescription
             ) {
@@ -603,7 +589,6 @@ struct CaptureSettingsView: View {
         if selectedPane == .recording {
           Section(L10n.PreferencesCapture.recordingControlsSection) {
             SettingRow(
-              icon: "menubar.rectangle",
               title: L10n.PreferencesCapture.hoverBarVisibleTitle,
               description: L10n.PreferencesCapture.hoverBarVisibleDescription
             ) {
@@ -612,7 +597,6 @@ struct CaptureSettingsView: View {
             }
 
             SettingRow(
-              icon: "timer",
               title: L10n.PreferencesCapture.menuBarTimeTitle,
               description: L10n.PreferencesCapture.menuBarTimeDescription
             ) {
@@ -627,7 +611,6 @@ struct CaptureSettingsView: View {
         if selectedPane == .recording {
           Section(L10n.PreferencesCapture.mouseHighlightSection) {
             SettingRow(
-              icon: "cursorarrow.click.2",
               title: L10n.PreferencesCapture.highlightSizeTitle,
               description: L10n.PreferencesCapture.highlightSizeDescription(Int(mouseHighlightSize))
             ) {
@@ -636,7 +619,6 @@ struct CaptureSettingsView: View {
             }
 
             SettingRow(
-              icon: "timer",
               title: L10n.PreferencesCapture.animationDurationTitle,
               description: L10n.PreferencesCapture.animationDurationDescription(
                 String(format: "%.1f", mouseHighlightAnimDuration)
@@ -647,7 +629,6 @@ struct CaptureSettingsView: View {
             }
 
             SettingRow(
-              icon: "circle.grid.3x3",
               title: L10n.PreferencesCapture.rippleCountTitle,
               description: L10n.PreferencesCapture.rippleCountDescription
             ) {
@@ -662,7 +643,6 @@ struct CaptureSettingsView: View {
             }
 
             SettingRow(
-              icon: "paintpalette",
               title: L10n.PreferencesCapture.highlightColorTitle,
               description: L10n.PreferencesCapture.highlightColorDescription
             ) {
@@ -671,7 +651,6 @@ struct CaptureSettingsView: View {
             }
 
             SettingRow(
-              icon: "circle.lefthalf.filled",
               title: L10n.PreferencesCapture.opacityTitle,
               description: L10n.PreferencesCapture.opacityDescription(Int(mouseHighlightOpacity * 100))
             ) {
@@ -694,7 +673,6 @@ struct CaptureSettingsView: View {
         if selectedPane == .recording {
           Section(L10n.PreferencesCapture.keystrokeOverlaySection) {
             SettingRow(
-              icon: "textformat.size",
               title: L10n.PreferencesCapture.fontSizeTitle,
               description: L10n.PreferencesCapture.fontSizeDescription(Int(keystrokeFontSize))
             ) {
@@ -703,7 +681,6 @@ struct CaptureSettingsView: View {
             }
 
             SettingRow(
-              icon: "square.and.arrow.down.on.square",
               title: L10n.PreferencesCapture.positionTitle,
               description: L10n.PreferencesCapture.positionDescription
             ) {
@@ -718,7 +695,6 @@ struct CaptureSettingsView: View {
             }
 
             SettingRow(
-              icon: "clock",
               title: L10n.PreferencesCapture.displayDurationTitle,
               description: L10n.PreferencesCapture.displayDurationDescription(
                 String(format: "%.1f", keystrokeDisplayDuration)
@@ -743,7 +719,6 @@ struct CaptureSettingsView: View {
         if selectedPane == .recording {
           Section(L10n.PreferencesCapture.audioSection) {
             SettingRow(
-              icon: "speaker.wave.3.fill",
               title: L10n.PreferencesCapture.systemAudioTitle,
               description: L10n.PreferencesCapture.systemAudioDescription
             ) {
@@ -752,7 +727,6 @@ struct CaptureSettingsView: View {
             }
 
             SettingRow(
-              icon: "mic.fill",
               title: L10n.Onboarding.microphone,
               description: L10n.PreferencesCapture.microphoneDescription
             ) {
@@ -770,7 +744,6 @@ struct CaptureSettingsView: View {
             }
 
             SettingRow(
-              icon: "mic.badge.plus",
               title: L10n.PreferencesCapture.microphoneInputTitle,
               description: L10n.PreferencesCapture.microphoneInputDescription
             ) {
@@ -804,7 +777,6 @@ struct CaptureSettingsView: View {
               .foregroundColor(.secondary)
 
             SettingRow(
-              icon: "person.crop.rectangle",
               title: L10n.PreferencesCapture.autoCropSubjectTitle,
               description: L10n.PreferencesCapture.autoCropSubjectDescription
             ) {
@@ -815,6 +787,11 @@ struct CaptureSettingsView: View {
         }
       }
       .formStyle(.grouped)
+      .onReceive(PreferencesNavigationState.shared.$revealRequest) { request in
+        if let pane = request?.pane.flatMap(CaptureSettingsPane.init(rawValue:)) {
+          selectedPane = pane
+        }
+      }
     }
     .onAppear(perform: refreshMicrophoneDevices)
     .task {

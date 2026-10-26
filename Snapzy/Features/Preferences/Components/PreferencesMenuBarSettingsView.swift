@@ -25,6 +25,12 @@ struct MenuBarSettingsView: View {
 
   var body: some View {
     Form {
+      Section {
+        MenuBarSettingsPreview(store: store)
+          .id(iconRefreshID)
+          .padding(.vertical, 4)
+      }
+
       iconSection
 
       ForEach(MenuBarItemGroup.allCases, id: \.self) { group in
@@ -33,7 +39,6 @@ struct MenuBarSettingsView: View {
 
       Section(L10n.PreferencesMenuBar.appSection) {
         SettingRow(
-          icon: MenuBarItemKind.checkForUpdates.systemImage,
           title: MenuBarItemKind.checkForUpdates.settingsTitle,
           description: nil
         ) {

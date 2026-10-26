@@ -128,11 +128,12 @@ final class PreferencesCoreTests: XCTestCase {
     XCTAssertEqual(PreferencesTab.allCases.count, 12)
   }
 
-  func testPreferencesTabGroups_coverAllCasesExactlyOnce() {
-    let flattened = PreferencesTab.groups.flatMap { $0 }
-    XCTAssertEqual(flattened.count, PreferencesTab.allCases.count)
-    XCTAssertEqual(Set(flattened).count, PreferencesTab.allCases.count)
+  func testPreferencesTabSidebar_coversAllCasesExactlyOnce() {
+    let order = PreferencesTab.sidebarOrder
+    XCTAssertEqual(order.count, PreferencesTab.allCases.count)
+    XCTAssertEqual(Set(order).count, PreferencesTab.allCases.count)
     XCTAssertEqual(PreferencesTab.groups.count, 4)
+    XCTAssertEqual(order.last, .about)
   }
 
   func testPreferencesTab_symbolsAndTitlesAreNonEmpty() {
@@ -192,6 +193,14 @@ final class PreferencesCoreTests: XCTestCase {
     XCTAssertEqual(navigation.selectedTab, .shortcuts)
     XCTAssertFalse(navigation.canGoForward)
     XCTAssertEqual(navigation.backStack, [.general, .capture])
+  }
+
+  func testPreferencesNavigationState_heroPagesLeaveHeaderUntitled() {
+    let navigation = makeNavigationState(initialTab: .general)
+    XCTAssertEqual(navigation.title, PreferencesTab.general.title)
+
+    navigation.select(.shortcuts)
+    XCTAssertEqual(navigation.title, "", "The hero already names the page")
   }
 
   func testAboutContributor_propertiesAndCollections() {

@@ -59,6 +59,11 @@ struct CloudSettingsView: View {
 
   var body: some View {
     Form {
+      Section {
+      } header: {
+        PreferencesPageHero(tab: .cloud, subtitle: L10n.CloudSettings.heroSubtitle)
+      }
+
       if showPasswordInit {
         CloudPasswordInitView(
           onComplete: {
@@ -66,7 +71,7 @@ struct CloudSettingsView: View {
             passwordInitCompleted = true
           }
         )
-      } else if cloudManager.isConfigured && !isEditing {
+      } else if showsConfiguredView {
         configuredView
       } else {
         CloudCredentialFormView(
@@ -88,6 +93,11 @@ struct CloudSettingsView: View {
       uploadsWindowSection
     }
     .formStyle(.grouped)
+    .toolbar {
+      if showsConfiguredView {
+        configuredToolbar
+      }
+    }
     .alert(L10n.CloudSettings.resetConfigurationTitle, isPresented: $showResetConfirmation) {
       Button(L10n.CloudSettings.reset, role: .destructive) {
         cloudManager.clearConfiguration()
@@ -171,114 +181,99 @@ struct CloudSettingsView: View {
 
   private var configuredView: some View {
     Group {
-      // Cloud stats at the very top
-      if cloudManager.cachedConfiguration?.providerType != .googleDrive {
-        cloudStatsSection
-      }
+      if let config = cloudManager.cachedConfiguration {
+        Section(L10n.CloudSettings.providerSection) {
+          CloudProviderSummaryRow(config: config)
 
-      Section(L10n.CloudSettings.providerSection) {
-        if let config = cloudManager.cachedConfiguration {
           if config.providerType == .googleDrive {
-            SettingRow(
-              icon: "cloud.fill",
-              title: config.providerType.displayName,
-              description: config.bucket.isEmpty ? "Snapzy" : config.bucket
-            ) {
-              EmptyView()
+            LabeledContent(L10n.CloudSettings.googleFolderName) {
+              Text(verbatim: config.bucket.isEmpty ? "Snapzy" : config.bucket)
             }
-
-            SettingRow(
-              icon: "checkmark.seal.fill",
-              title: L10n.CloudSettings.googleAuthorized,
-              description: L10n.CloudSettings.storedSecurelyInKeychain
-            ) {
-              EmptyView()
+            LabeledContent(L10n.CloudSettings.credentialsSection) {
+              Text(L10n.CloudSettings.storedSecurelyInKeychain)
             }
           } else {
-            SettingRow(
-              icon: "cloud.fill",
-              title: config.providerType.displayName,
-              description: L10n.CloudSettings.bucketDescription(config.bucket)
-            ) {
-              EmptyView()
-            }
-
-            SettingRow(
-              icon: "key.fill",
-              title: L10n.CloudSettings.accessKey,
-              description: cloudManager.cachedMaskedAccessKey
-            ) {
-              EmptyView()
+            LabeledContent(L10n.CloudSettings.accessKey) {
+              Text(verbatim: cloudManager.cachedMaskedAccessKey)
+                .font(.system(.body, design: .monospaced))
             }
 
             if !config.region.isEmpty && config.providerType == .awsS3 {
-              SettingRow(
-                icon: "globe",
-                title: L10n.CloudSettings.region,
-                description: config.region
-              ) {
-                EmptyView()
+              LabeledContent(L10n.CloudSettings.region) {
+                Text(verbatim: config.region)
               }
             }
 
             if let endpoint = config.endpoint, !endpoint.isEmpty {
-              SettingRow(
-                icon: "server.rack",
-                title: L10n.CloudSettings.endpoint,
-                description: cloudManager.maskedEndpoint()
-              ) {
-                EmptyView()
+              LabeledContent(L10n.CloudSettings.endpoint) {
+                Text(verbatim: cloudManager.maskedEndpoint())
+                  .lineLimit(1)
+                  .truncationMode(.middle)
               }
-            }
-
-            SettingRow(
-              icon: "clock",
-              title: L10n.CloudSettings.expireTime,
-              description: config.expireTime.displayName
-            ) {
-              EmptyView()
             }
 
             if let domain = config.customDomain, !domain.isEmpty {
-              SettingRow(
-                icon: "link",
-                title: L10n.CloudSettings.customDomain,
-                description: domain
-              ) {
-                EmptyView()
+              LabeledContent(L10n.CloudSettings.customDomain) {
+                Text(verbatim: domain)
+                  .lineLimit(1)
+                  .truncationMode(.middle)
               }
+            }
+
+            LabeledContent(L10n.CloudSettings.expireTime) {
+              Text(config.expireTime.displayName)
             }
           }
         }
 
-        HStack(spacing: 12) {
-          Button(action: handleEditTapped) {
-            Label(L10n.CloudSettings.edit, systemImage: "pencil")
-          }
-
-          Button(action: handleImportTapped) {
-            Label(L10n.Common.importAction, systemImage: "square.and.arrow.down")
-          }
-
-          Button(action: handleExportTapped) {
-            Label(L10n.Common.exportAction, systemImage: "square.and.arrow.up")
-          }
-
-          Button(role: .destructive, action: { showResetConfirmation = true }) {
-            Label(L10n.CloudSettings.reset, systemImage: "arrow.counterclockwise")
-          }
-          .foregroundColor(.red)
+        if config.providerType != .googleDrive {
+          cloudStatsSection
         }
-        .controlSize(.regular)
-        .padding(.top, 4)
       }
     }
+  }
+
+  /// Header actions for a saved configuration, mirroring the Shortcuts tab's toolbar:
+  /// quiet icon buttons for the secondary actions, a labelled Edit as the primary one.
+  @ToolbarContentBuilder
+  private var configuredToolbar: some ToolbarContent {
+    ToolbarItemGroup(placement: .primaryAction) {
+      Menu {
+        Button(action: handleImportTapped) {
+          Label(L10n.Common.importAction, systemImage: "square.and.arrow.down")
+        }
+        Button(action: handleExportTapped) {
+          Label(L10n.Common.exportAction, systemImage: "square.and.arrow.up")
+        }
+      } label: {
+        Label(L10n.CloudSettings.transferSection, systemImage: "arrow.up.arrow.down")
+      }
+      .menuIndicator(.hidden)
+      .help(L10n.CloudSettings.transferSection)
+
+      Button(role: .destructive) {
+        showResetConfirmation = true
+      } label: {
+        Label(L10n.CloudSettings.reset, systemImage: "arrow.counterclockwise")
+      }
+      .help(L10n.CloudSettings.resetConfigurationTitle)
+
+      Button(action: handleEditTapped) {
+        Label(L10n.CloudSettings.edit, systemImage: "pencil")
+          .labelStyle(.titleAndIcon)
+          .padding(.horizontal, 4)
+      }
+      .help(L10n.CloudSettings.editCredentialsPasswordPrompt)
+    }
+  }
+
+  private var showsConfiguredView: Bool {
+    !showPasswordInit && cloudManager.isConfigured && !isEditing
   }
 
   private var uploadsWindowSection: some View {
     Section(L10n.CloudSettings.uploadsWindowSection) {
       SettingRow(
-        icon: "rectangle.center.inset.filled",
         title: L10n.CloudSettings.uploadsWindowPositionTitle,
         description: L10n.CloudSettings.uploadsWindowPositionDescription
       ) {
@@ -488,41 +483,6 @@ struct CloudSettingsView: View {
           )
         }
 
-        // Footer: last updated + refresh
-        HStack(spacing: 6) {
-          if let fetchedAt = info?.fetchedAt {
-            (
-              Text("\(L10n.CloudUsage.updatedPrefix) ")
-              + Text(fetchedAt, style: .relative)
-              + Text(" \(L10n.CloudUsage.agoSuffix)")
-            )
-              .font(.system(size: 10))
-              .foregroundColor(.secondary)
-          }
-
-          Spacer()
-
-          Button(action: {
-            Task { await usageService.fetchUsage(forceRefresh: true) }
-          }) {
-            HStack(spacing: 4) {
-              if usageService.isLoading {
-                ProgressView()
-                  .scaleEffect(0.5)
-                  .frame(width: 10, height: 10)
-              } else {
-                Image(systemName: "arrow.clockwise")
-                  .font(.system(size: 10))
-              }
-              Text(L10n.Common.refresh)
-                .font(.system(size: 10))
-            }
-            .foregroundColor(.secondary)
-          }
-          .buttonStyle(.plain)
-          .disabled(usageService.isLoading)
-        }
-
         if let refreshError = usageService.error, usageService.usageInfo != nil {
           HStack(alignment: .top, spacing: 6) {
             Image(systemName: "exclamationmark.triangle.fill")
@@ -536,13 +496,93 @@ struct CloudSettingsView: View {
         }
       }
     } header: {
-      Text(L10n.CloudUsage.cloudStatus)
+      HStack {
+        Text(L10n.CloudUsage.cloudStatus)
+        Spacer()
+        Button {
+          Task { await usageService.fetchUsage(forceRefresh: true) }
+        } label: {
+          if usageService.isLoading {
+            ProgressView()
+              .controlSize(.mini)
+          } else {
+            Text(L10n.Common.refresh)
+          }
+        }
+        .buttonStyle(.borderless)
+        .font(.caption)
+        .textCase(nil)
+        .disabled(usageService.isLoading)
+      }
+    } footer: {
+      if let fetchedAt = usageService.usageInfo?.fetchedAt {
+        (
+          Text("\(L10n.CloudUsage.updatedPrefix) ")
+          + Text(fetchedAt, style: .relative)
+          + Text(" \(L10n.CloudUsage.agoSuffix)")
+        )
+          .font(.caption)
+          .foregroundColor(.secondary)
+          .frame(maxWidth: .infinity, alignment: .trailing)
+      }
     }
   }
 
   private func lifecycleShortLabel(_ days: Int?) -> String {
     guard let days = days else { return L10n.CloudUsage.none }
     return L10n.CloudUsage.daysExpire(days)
+  }
+}
+
+// MARK: - Provider Summary
+
+/// Lead row of the provider card: provider tile, name, bucket, and connection status.
+private struct CloudProviderSummaryRow: View {
+  let config: CloudConfiguration
+
+  var body: some View {
+    HStack(spacing: 12) {
+      PreferencesSymbolTile(symbol: symbol, size: 30, tint: PreferencesTab.cloud.iconTint, duotone: true)
+
+      VStack(alignment: .leading, spacing: 2) {
+        Text(config.providerType.displayName)
+          .font(.system(size: 13, weight: .medium))
+        Text(verbatim: subtitle)
+          .font(.system(size: 11))
+          .foregroundStyle(Color.secondary)
+          .lineLimit(1)
+          .truncationMode(.middle)
+      }
+
+      Spacer(minLength: 8)
+
+      Label {
+        Text(config.providerType == .googleDrive ? L10n.CloudSettings.googleAuthorized : L10n.CloudSettings.connected)
+      } icon: {
+        Circle()
+          .fill(Color.green)
+          .frame(width: 7, height: 7)
+      }
+      .font(.system(size: 11))
+      .foregroundStyle(Color.secondary)
+    }
+    .padding(.vertical, 2)
+    .accessibilityElement(children: .combine)
+  }
+
+  private var symbol: String {
+    switch config.providerType {
+    case .awsS3: return "externaldrive.fill"
+    case .cloudflareR2: return "cloud.fill"
+    case .googleDrive: return "folder.fill"
+    }
+  }
+
+  private var subtitle: String {
+    if config.providerType == .googleDrive {
+      return config.bucket.isEmpty ? "Snapzy" : config.bucket
+    }
+    return config.bucket
   }
 }
 
@@ -689,13 +729,13 @@ private struct CloudPasswordInitView: View {
 
         // Password fields
         VStack(alignment: .leading, spacing: 8) {
-          SettingRow(icon: "lock", title: L10n.CloudSettings.protectionPassword, description: nil) {
+          SettingRow(title: L10n.CloudSettings.protectionPassword, description: nil) {
             SecureField("", text: $password)
               .textFieldStyle(.roundedBorder)
               .frame(width: 240)
           }
 
-          SettingRow(icon: "lock.rotation", title: L10n.CloudSettings.confirmPassword, description: nil) {
+          SettingRow(title: L10n.CloudSettings.confirmPassword, description: nil) {
             SecureField("", text: $confirmPassword)
               .textFieldStyle(.roundedBorder)
               .frame(width: 240)
@@ -846,7 +886,6 @@ private struct CloudCredentialFormView: View {
 
       Section(L10n.CloudSettings.providerSection) {
         SettingRow(
-          icon: "cloud",
           title: L10n.CloudSettings.provider,
           description: nil,
           tooltip: L10n.CloudSettings.providerTooltip
@@ -864,7 +903,6 @@ private struct CloudCredentialFormView: View {
       if providerType == .googleDrive {
         Section(L10n.CloudSettings.googleCredentialsSection) {
           SettingRow(
-            icon: "person.badge.key",
             title: L10n.CloudSettings.googleClientId,
             description: nil,
             tooltip: nil
@@ -875,7 +913,6 @@ private struct CloudCredentialFormView: View {
           }
 
           SettingRow(
-            icon: "lock",
             title: L10n.CloudSettings.googleClientSecret,
             description: nil,
             tooltip: nil
@@ -930,7 +967,6 @@ private struct CloudCredentialFormView: View {
 
         Section(L10n.CloudSettings.googleFolderSection) {
           SettingRow(
-            icon: "folder",
             title: L10n.CloudSettings.googleFolderName,
             description: nil,
             tooltip: nil
@@ -948,7 +984,6 @@ private struct CloudCredentialFormView: View {
       } else {
         Section(L10n.CloudSettings.credentialsSection) {
           SettingRow(
-            icon: "key",
             title: L10n.CloudSettings.accessKeyID,
             description: nil,
             tooltip: L10n.CloudSettings.accessKeyTooltip
@@ -959,7 +994,6 @@ private struct CloudCredentialFormView: View {
           }
 
           SettingRow(
-            icon: "lock",
             title: L10n.CloudSettings.secretAccessKey,
             description: nil,
             tooltip: L10n.CloudSettings.secretKeyTooltip
@@ -986,7 +1020,6 @@ private struct CloudCredentialFormView: View {
 
         Section(L10n.CloudSettings.storageSection) {
           SettingRow(
-            icon: "externaldrive",
             title: L10n.CloudSettings.bucketName,
             description: nil,
             tooltip: L10n.CloudSettings.bucketTooltip
@@ -998,7 +1031,6 @@ private struct CloudCredentialFormView: View {
 
           if providerType == .awsS3 {
             SettingRow(
-              icon: "globe",
               title: L10n.CloudSettings.region,
               description: nil,
               tooltip: L10n.CloudSettings.regionTooltip
@@ -1009,7 +1041,6 @@ private struct CloudCredentialFormView: View {
             }
 
             SettingRow(
-              icon: "server.rack",
               title: L10n.CloudSettings.endpoint,
               description: nil,
               tooltip: L10n.CloudSettings.endpointTooltipS3
@@ -1022,7 +1053,6 @@ private struct CloudCredentialFormView: View {
 
           if providerType == .cloudflareR2 {
             SettingRow(
-              icon: "server.rack",
               title: L10n.CloudSettings.endpoint,
               description: nil,
               tooltip: L10n.CloudSettings.endpointTooltipR2
@@ -1034,7 +1064,6 @@ private struct CloudCredentialFormView: View {
           }
 
           SettingRow(
-            icon: "link",
             title: L10n.CloudSettings.customDomain,
             description: nil,
             tooltip: L10n.CloudSettings.customDomainTooltip
@@ -1084,7 +1113,6 @@ private struct CloudCredentialFormView: View {
       if !isEditing || !hasExistingPassword {
         Section(L10n.CloudSettings.protectionPasswordSection) {
           SettingRow(
-            icon: "lock.shield",
             title: L10n.CloudSettings.password,
             description: nil,
             tooltip: L10n.CloudSettings.passwordTooltip
@@ -1096,7 +1124,6 @@ private struct CloudCredentialFormView: View {
 
           if !protectionPassword.isEmpty {
             SettingRow(
-              icon: "lock.rotation",
               title: L10n.CloudSettings.confirmPassword,
               description: nil,
               tooltip: L10n.CloudSettings.confirmPasswordTooltip

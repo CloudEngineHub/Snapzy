@@ -2954,6 +2954,16 @@ nonisolated enum L10n {
       defaultValue: "Settings categories",
       comment: "Accessibility label for settings sidebar categories"
     )
+    static let sidebarSearchPlaceholder = string(
+      "preferences-general.sidebar-search-placeholder",
+      defaultValue: "Search settings",
+      comment: "Placeholder for the settings sidebar search field"
+    )
+    static let sidebarSearchNoResults = string(
+      "preferences-general.sidebar-search-no-results",
+      defaultValue: "No matching settings",
+      comment: "Shown in the settings sidebar when the search matches no page"
+    )
     static let navigationBack = string(
       "preferences-general.navigation-back",
       defaultValue: "Back (⌘[)",
@@ -4064,10 +4074,25 @@ nonisolated enum L10n {
   }
 
   enum PreferencesAnnotate {
-    static let behaviorSection = string(
-      "preferences-capture.section-annotate",
-      defaultValue: "Behavior",
-      comment: "Annotate preferences section title"
+    static let toolsSection = string(
+      "preferences-capture.section-annotate-tools",
+      defaultValue: "Tools",
+      comment: "Annotate preferences section title for tools the editor starts with"
+    )
+    static let drawingSection = string(
+      "preferences-capture.section-annotate-drawing",
+      defaultValue: "Drawing Helpers",
+      comment: "Annotate preferences section title for snapping aids while drawing and cropping"
+    )
+    static let openSaveSection = string(
+      "preferences-capture.section-annotate-open-save",
+      defaultValue: "Opening & Saving",
+      comment: "Annotate preferences section title for opening clipboard images and saving combined results"
+    )
+    static let dragSection = string(
+      "preferences-capture.section-annotate-drag",
+      defaultValue: "Drag & Drop",
+      comment: "Annotate preferences section title for what happens after dragging an image out of the editor"
     )
     static let defaultToolTitle = string(
       "preferences-capture.annotate-default-tool-title",
@@ -4196,6 +4221,16 @@ nonisolated enum L10n {
       "preferences-shortcuts.no-conflicts-description",
       defaultValue: "No overlapping macOS screenshot shortcuts were found for the Snapzy shortcuts you currently have enabled.",
       comment: "Description for success state when there are no system shortcut conflicts"
+    )
+    static let noConflictsBadge = string(
+      "preferences-shortcuts.no-conflicts-badge",
+      defaultValue: "No Conflicts",
+      comment: "Toolbar badge shown when no system shortcut conflicts exist"
+    )
+    static let conflictBadge = string(
+      "preferences-shortcuts.conflict-badge",
+      defaultValue: "Conflict",
+      comment: "Toolbar badge shown when macOS screenshot shortcuts conflict with Snapzy"
     )
     static let globalSection = string(
       "preferences-shortcuts.global-section",
@@ -4486,6 +4521,66 @@ nonisolated enum L10n {
       "preferences-shortcuts.reset-to-defaults",
       defaultValue: "Reset to Defaults",
       comment: "Button title for resetting shortcut settings"
+    )
+    static let heroSubtitle = string(
+      "preferences-shortcuts.hero-subtitle",
+      defaultValue: "Every key combination Snapzy listens for, all in one place.",
+      comment: "Subtitle under the Shortcuts page hero"
+    )
+    static let inAppSection = string(
+      "preferences-shortcuts.in-app-section",
+      defaultValue: "In-App Shortcuts",
+      comment: "Shortcuts overview group title for shortcuts that work inside Snapzy windows"
+    )
+    static let shortcutsOff = string(
+      "preferences-shortcuts.shortcuts-off",
+      defaultValue: "Shortcuts are turned off. Use the switch in the toolbar to turn them back on.",
+      comment: "Notice on the Shortcuts page while the master switch is off"
+    )
+    static let recordingPage = string(
+      "preferences-shortcuts.recording-page",
+      defaultValue: "Recording",
+      comment: "Shortcuts overview card title for recording shortcuts"
+    )
+    static let capturePageDescription = string(
+      "preferences-shortcuts.capture-page-description",
+      defaultValue: "Screenshots, scrolling capture, OCR, and more.",
+      comment: "Shortcuts overview card subtitle"
+    )
+    static let recordingPageDescription = string(
+      "preferences-shortcuts.recording-page-description",
+      defaultValue: "Start a recording and control it while it runs.",
+      comment: "Shortcuts overview card subtitle"
+    )
+    static let toolsPageDescription = string(
+      "preferences-shortcuts.tools-page-description",
+      defaultValue: "Open the editors, cloud uploads, and the color picker.",
+      comment: "Shortcuts overview card subtitle"
+    )
+    static let historyPageDescription = string(
+      "preferences-shortcuts.history-page-description",
+      defaultValue: "Open your capture history and switch its panel mode.",
+      comment: "Shortcuts overview card subtitle"
+    )
+    static let quickAccessPageDescription = string(
+      "preferences-shortcuts.quick-access-page-description",
+      defaultValue: "Edit the latest capture and act on the card you hover.",
+      comment: "Shortcuts overview card subtitle"
+    )
+    static let annotateActionsPageDescription = string(
+      "preferences-shortcuts.annotate-actions-page-description",
+      defaultValue: "Copy, pin, upload, and redact from the editor.",
+      comment: "Shortcuts overview card subtitle"
+    )
+    static let annotateToolsPageDescription = string(
+      "preferences-shortcuts.annotate-tools-page-description",
+      defaultValue: "Single keys that switch tools in the editor.",
+      comment: "Shortcuts overview card subtitle"
+    )
+    static let annotateReferencePageDescription = string(
+      "preferences-shortcuts.annotate-reference-page-description",
+      defaultValue: "Built-in editor keys, for reference.",
+      comment: "Shortcuts overview card subtitle"
     )
   }
 
@@ -5405,6 +5500,16 @@ nonisolated enum L10n {
   }
 
   enum CloudSettings {
+    static let heroSubtitle = string(
+      "cloud-settings.hero-subtitle",
+      defaultValue: "Upload captures to your own storage and share them with a link.",
+      comment: "Cloud settings page subtitle"
+    )
+    static let connected = string(
+      "cloud-settings.connected",
+      defaultValue: "Connected",
+      comment: "Status shown next to the configured cloud provider"
+    )
     static let resetConfigurationTitle = string(
       "cloud-settings.reset-configuration-title",
       defaultValue: "Reset Cloud Configuration?",
